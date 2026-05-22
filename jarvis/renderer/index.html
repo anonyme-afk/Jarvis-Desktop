@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- FOND : canvas pour la carte réseau animée -->
+  <canvas id="network-canvas" style="
+    position:fixed; inset:0; width:100%; height:100%;
+    opacity:0; transition:opacity 1.2s ease;
+    z-index:0;
+  "></canvas>
+
+  <!-- CONTENU PRINCIPAL -->
+  <div id="app" style="position:relative; z-index:10; width:100vw; height:100vh;">
+
+    <!-- COIN HAUT GAUCHE : infos système -->
+    <div class="hud-panel top-left">
+      <div class="hud-corner tl"></div>
+      <div class="hud-line">
+        <span class="hud-label">SYS</span>
+        <span class="hud-value" id="sys-time">00:00:00</span>
+      </div>
+      <div class="hud-line">
+        <span class="hud-label">MIC</span>
+        <span class="hud-value" id="mic-status">VEILLE</span>
+      </div>
+      <div class="hud-line">
+        <span class="hud-label">CAM</span>
+        <span class="hud-value" id="cam-status">OFF</span>
+      </div>
+    </div>
+
+    <!-- COIN HAUT DROIT : statut API / modèle -->
+    <div class="hud-panel top-right">
+      <div class="hud-corner tr"></div>
+      <div class="hud-line">
+        <span class="hud-label">MODEL</span>
+        <span class="hud-value" id="model-name">GEMINI / OLLAMA</span>
+      </div>
+      <div class="hud-line">
+        <span class="hud-label">API</span>
+        <span class="hud-value status-ok" id="api-status">CONNECTÉ</span>
+      </div>
+    </div>
+
+    <!-- ZONE CENTRALE : transcription + réponse -->
+    <div id="chat-zone" style="
+      position:absolute;
+      left:50%; top:50%;
+      transform:translate(-50%, -50%);
+      width:min(700px, 80vw);
+      max-height:50vh;
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding-right: 15px;
+    ">
+      <!-- Les messages sont injectés ici dynamiquement -->
+    </div>
+
+    <!-- WAVEFORM MICROPHONE (bas centre) -->
+    <canvas id="waveform-canvas" style="
+      position:fixed;
+      bottom:60px;
+      left:50%;
+      transform:translateX(-50%);
+      width:400px;
+      height:60px;
+      opacity:0.7;
+    "></canvas>
+
+    <!-- FEED CAMÉRA (haut droit, aparaît quand vision active) -->
+    <div id="camera-feed" style="
+      position:fixed;
+      top:80px; right:20px;
+      width:220px; height:165px;
+      border:1px solid var(--cyan-dim);
+      box-shadow:var(--glow-cyan);
+      opacity:0;
+      transition:opacity 0.5s;
+      z-index:50;
+    ">
+      <video id="camera-video" autoplay muted style="width:100%;height:100%;object-fit:cover;"></video>
+      <!-- Overlay HUD sur la caméra -->
+      <div style="position:absolute;inset:0;pointer-events:none;">
+        <div class="hud-corner tl" style="opacity:1"></div>
+        <div class="hud-corner tr" style="opacity:1"></div>
+        <div class="hud-corner bl" style="opacity:1"></div>
+        <div class="hud-corner br" style="opacity:1"></div>
+        <!-- Ligne de scan animée -->
+        <div id="scan-line" style="
+          position:absolute; left:0; right:0;
+          height:2px;
+          background:linear-gradient(90deg, transparent, #00BFFF88, transparent);
+          animation:scan 2s linear infinite;
+        "></div>
+        <div style="
+          position:absolute;bottom:4px;left:6px;
+          font-family:'Orbitron',monospace;font-size:8px;
+          color:#00BFFF;letter-spacing:0.1em;
+        ">VISION ACTIVE</div>
+      </div>
+    </div>
+
+    <!-- L'ORBE JARVIS -->
+    <div id="jarvis-orb" class="orb-center-mode">
+      <div class="orb-glow-outer"></div>
+      <div class="orb-ring-outer"></div>
+      <div class="orb-ring-middle"></div>
+      <div class="orb-ring-inner"></div>
+      <div class="orb-core">
+        <span class="orb-label">JARVIS</span>
+      </div>
+    </div>
+
+    <!-- BARRE DE STATUT BAS -->
+    <div style="
+      position:fixed; bottom:0; left:0; right:0;
+      height:36px;
+      background:rgba(4,13,26,0.85);
+      border-top:1px solid rgba(0,191,255,0.15);
+      display:flex; align-items:center;
+      padding:0 20px; gap:32px;
+      font-family:'Rajdhani',sans-serif;
+      font-size:11px; letter-spacing:0.15em;
+      color:var(--text-secondary);
+      z-index:200;
+    ">
+      <span>◉ <span id="status-bar-text">EN ATTENTE</span></span>
+      <span style="margin-left:auto" id="status-bar-time">00:00</span>
+    </div>
+
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

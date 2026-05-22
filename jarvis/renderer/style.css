@@ -1,0 +1,313 @@
+:root {
+  /* Fonds */
+  --bg-deep:        #040D1A;   /* fond principal bleu nuit */
+  --bg-panel:       #071528;   /* panneaux légèrement plus clairs */
+  --bg-grid-line:   #0A2040;   /* couleur des lignes de la grille */
+
+  /* Accents lumineux */
+  --cyan-core:      #00BFFF;   /* cyan principal de l'orbe */
+  --cyan-bright:    #40D4FF;   /* cyan quand actif/lumineux */
+  --cyan-dim:       #005F7F;   /* cyan sombre pour éléments discrets */
+  --blue-mid:       #1A3A5C;   /* bleu intermédiaire */
+  --node-green:     #00FF88;   /* couleur des nœuds réseau sur la carte */
+  --node-line:      #1A6080;   /* couleur des connexions réseau */
+
+  /* Texte */
+  --text-primary:   #E8F4FF;   /* texte principal, blanc bleuté */
+  --text-secondary: #5A8FAA;   /* texte secondaire, bleu grisé */
+  --text-jarvis:    #00BFFF;   /* texte JARVIS lui-même */
+
+  /* Glow (utilisé dans box-shadow et filter) */
+  --glow-cyan:   0 0 8px #00BFFF, 0 0 20px #00BFFF44, 0 0 40px #00BFFF22;
+  --glow-strong: 0 0 12px #00BFFF, 0 0 30px #00BFFF66, 0 0 60px #00BFFF33;
+  --glow-node:   0 0 6px #00FF88, 0 0 15px #00FF8844;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-deep);
+  overflow: hidden;
+  font-family: 'Orbitron', monospace;
+
+  /* LA GRILLE TECHNIQUE */
+  background-image:
+    linear-gradient(var(--bg-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid-line) 1px, transparent 1px),
+    linear-gradient(rgba(10, 32, 64, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 32, 64, 0.4) 1px, transparent 1px);
+  background-size:
+    80px 80px,
+    80px 80px,
+    20px 20px,
+    20px 20px;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 40%,
+    rgba(2, 6, 15, 0.7) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.025) 3px,
+    rgba(0, 0, 0, 0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ===== ORBE : styles de base ===== */
+#jarvis-orb {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+}
+
+#jarvis-orb.orb-center-mode {
+  width: 280px;
+  height: 280px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#jarvis-orb.orb-corner-mode {
+  width: 120px;
+  height: 120px;
+  right: 32px;
+  bottom: 80px; /* Surélevé par rapport à la barre de statut */
+  left: auto;
+  top: auto;
+  transform: none;
+}
+
+.orb-glow-outer {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 191, 255, 0.15) 0%,
+    rgba(0, 191, 255, 0.06) 40%,
+    transparent 70%
+  );
+  width: 200%;
+  height: 200%;
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(0.95); }
+  50%       { opacity: 1.0; transform: scale(1.05); }
+}
+
+.orb-ring-outer {
+  position: absolute;
+  width: 95%;
+  height: 95%;
+  border-radius: 50%;
+  border: 1px dashed rgba(0, 191, 255, 0.35);
+  animation: rotate-cw 20s linear infinite;
+  box-shadow: var(--glow-cyan);
+}
+
+.orb-ring-middle {
+  position: absolute;
+  width: 78%;
+  height: 78%;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: rgba(0, 191, 255, 0.8);
+  border-right-color: rgba(0, 191, 255, 0.3);
+  border-bottom-color: rgba(0, 191, 255, 0.8);
+  border-left-color: rgba(0, 191, 255, 0.3);
+  animation: rotate-ccw 8s linear infinite;
+  filter: drop-shadow(0 0 4px #00BFFF);
+}
+
+.orb-ring-inner {
+  position: absolute;
+  width: 58%;
+  height: 58%;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 191, 255, 0.5);
+  animation: rotate-cw 5s linear infinite;
+}
+
+.orb-core {
+  position: relative;
+  width: 42%;
+  height: 42%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #00BFFF22, #040D1A88);
+  border: 1px solid rgba(0, 191, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 10px rgba(0, 191, 255, 0.3), var(--glow-cyan);
+  animation: core-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes core-pulse {
+  0%, 100% { box-shadow: inset 0 0 10px rgba(0,191,255,0.3), 0 0 8px #00BFFF, 0 0 20px #00BFFF44; }
+  50%       { box-shadow: inset 0 0 18px rgba(0,191,255,0.6), 0 0 16px #00BFFF, 0 0 40px #00BFFF66; }
+}
+
+.orb-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.32em;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px #00BFFF, 0 0 16px #00BFFF;
+}
+
+#jarvis-orb.state-listening .orb-ring-middle {
+  animation-duration: 3s;
+  border-top-color: #FFFFFF;
+  border-bottom-color: #FFFFFF;
+  filter: drop-shadow(0 0 8px #FFFFFF);
+}
+
+#jarvis-orb.state-speaking .orb-core {
+  animation: core-speaking 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes core-speaking {
+  from { transform: scale(0.98); }
+  to   { transform: scale(1.08); }
+}
+
+@keyframes rotate-cw  { to { transform: rotate(360deg);  } }
+@keyframes rotate-ccw { to { transform: rotate(-360deg); } }
+
+/* Bulle message utilisateur */
+.msg-user {
+  align-self: flex-end;
+  background: rgba(0, 80, 120, 0.25);
+  border: 1px solid rgba(0, 191, 255, 0.2);
+  border-radius: 12px 12px 2px 12px;
+  padding: 10px 16px;
+  max-width: 85%;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  color: #C8E8FF;
+}
+
+.msg-user::before {
+  content: 'VOUS';
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--cyan-dim);
+  margin-bottom: 4px;
+}
+
+/* Bulle message JARVIS */
+.msg-jarvis {
+  align-self: flex-start;
+  background: rgba(0, 32, 60, 0.4);
+  border: 1px solid rgba(0, 191, 255, 0.15);
+  border-left: 2px solid #00BFFF;
+  border-radius: 2px 12px 12px 12px;
+  padding: 10px 16px;
+  max-width: 90%;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  color: var(--text-primary);
+  box-shadow: -4px 0 20px rgba(0, 191, 255, 0.05);
+}
+
+.msg-jarvis::before {
+  content: 'JARVIS';
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: #00BFFF;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px #00BFFF;
+}
+
+/* Effet typing sur le texte de JARVIS */
+.typing-cursor::after {
+  content: '▋';
+  color: #00BFFF;
+  animation: blink 0.8s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* Animation scan caméra */
+@keyframes scan {
+  0%   { top: 0%; }
+  100% { top: 100%; }
+}
+
+/* HUD Panels (coins) */
+.hud-panel {
+  position: fixed;
+  padding: 12px 16px;
+  z-index: 100;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.hud-panel.top-left { top: 16px; left: 16px; }
+.hud-panel.top-right { top: 16px; right: 16px; text-align: right; }
+
+.hud-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 2px 0;
+}
+.hud-label {
+  color: var(--text-secondary);
+  min-width: 36px;
+}
+.hud-value {
+  color: var(--text-primary);
+}
+.status-ok { color: #00FF88; }
+
+/* Corner brackets (les coins décoratifs) */
+.hud-corner { position: absolute; width: 14px; height: 14px; }
+.hud-corner.tl { top:0; left:0;  border-top:1.5px solid #00BFFF44; border-left:1.5px solid #00BFFF44; }
+.hud-corner.tr { top:0; right:0; border-top:1.5px solid #00BFFF44; border-right:1.5px solid #00BFFF44; }
+.hud-corner.bl { bottom:0; left:0;  border-bottom:1.5px solid #00BFFF44; border-left:1.5px solid #00BFFF44; }
+.hud-corner.br { bottom:0; right:0; border-bottom:1.5px solid #00BFFF44; border-right:1.5px solid #00BFFF44; }
+
+/* Custom scrollbar for chat area */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.2); 
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 191, 255, 0.4); 
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 191, 255, 0.8); 
+}

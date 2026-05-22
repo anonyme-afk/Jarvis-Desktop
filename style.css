@@ -1,0 +1,395 @@
+:root {
+  /* Fonds */
+  --bg-deep:        #040D1A;   /* fond principal bleu nuit */
+  --bg-panel:       #071528;   /* panneaux légèrement plus clairs */
+  --bg-grid-line:   #0A2040;   /* couleur des lignes de la grille */
+
+  /* Accents lumineux */
+  --cyan-core:      #00BFFF;   /* cyan principal de l'orbe */
+  --cyan-bright:    #40D4FF;   /* cyan quand actif/lumineux */
+  --cyan-dim:       #005F7F;   /* cyan sombre pour éléments discrets */
+  --blue-mid:       #1A3A5C;   /* bleu intermédiaire */
+  --node-green:     #00FF88;   /* couleur des nœuds réseau sur la carte */
+  --node-line:      #1A6080;   /* couleur des connexions réseau */
+
+  /* Texte */
+  --text-primary:   #E8F4FF;   /* texte principal, blanc bleuté */
+  --text-secondary: #5A8FAA;   /* texte secondaire, bleu grisé */
+  --text-jarvis:    #00BFFF;   /* texte JARVIS lui-même */
+
+  /* Glow (utilisé dans box-shadow et filter) */
+  --glow-cyan:   0 0 8px #00BFFF, 0 0 20px #00BFFF44, 0 0 40px #00BFFF22;
+  --glow-strong: 0 0 12px #00BFFF, 0 0 30px #00BFFF66, 0 0 60px #00BFFF33;
+  --glow-node:   0 0 6px #00FF88, 0 0 15px #00FF8844;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #040D1A;
+  overflow: hidden;
+  font-family: 'Orbitron', monospace;
+
+  /* Grille à 2 niveaux, TRÈS subtile */
+  background-image:
+    /* Grandes divisions (80px) — presque invisibles */
+    linear-gradient(rgba(15, 50, 90, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 50, 90, 0.35) 1px, transparent 1px),
+    /* Petites subdivisions (20px) — encore plus subtiles */
+    linear-gradient(rgba(10, 35, 65, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 35, 65, 0.18) 1px, transparent 1px);
+  background-size: 80px 80px, 80px 80px, 20px 20px, 20px 20px;
+}
+
+/* Vignette (bords sombres → centre légèrement plus lumineux) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 50%,
+    transparent 30%,
+    rgba(2, 7, 18, 0.55) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Scanlines très légères */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.018) 3px,
+    rgba(0, 0, 0, 0.018) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ORBE — version finale réaliste */
+#jarvis-orb {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#jarvis-orb.orb-center-mode {
+  width: 280px;
+  height: 280px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+#jarvis-orb.orb-corner-mode {
+  width: 130px;
+  height: 130px;
+  right: 32px;
+  bottom: 80px; /* Surélevé par rapport à la barre de statut */
+  left: auto;
+  top: auto;
+  transform: none;
+}
+
+/* Bloom extérieur — le halo diffus réaliste */
+#jarvis-orb::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 191, 255, 0.12) 0%,
+    rgba(0, 140, 200, 0.06) 35%,
+    transparent 65%
+  );
+  animation: bloom 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes bloom {
+  0%, 100% { transform: scale(0.9); opacity: 0.7; }
+  50%       { transform: scale(1.1); opacity: 1.0; }
+}
+
+/* Anneau 1 — fin, tirets courts, tourne très lentement */
+.ring-1 {
+  position: absolute;
+  width: 92%;
+  height: 92%;
+  border-radius: 50%;
+  border: 0.8px solid rgba(0, 191, 255, 0.25);
+  /* Tirets via SVG stroke-dasharray simulé en CSS */
+  background:
+    repeating-conic-gradient(
+      rgba(0,191,255,0.5) 0deg 4deg,
+      transparent 4deg 14deg
+    );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1px), white calc(100% - 1px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 1px), white calc(100% - 1px));
+  animation: spin-cw 25s linear infinite;
+}
+
+/* Anneau 2 — plus lumineux, asymétrique (arc brillant + arc sombre) */
+.ring-2 {
+  position: absolute;
+  width: 76%;
+  height: 76%;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color:    rgba(0, 220, 255, 0.95);
+  border-right-color:  rgba(0, 191, 255, 0.20);
+  border-bottom-color: rgba(0, 220, 255, 0.90);
+  border-left-color:   rgba(0, 191, 255, 0.15);
+  box-shadow:
+    0 0 6px  rgba(0, 220, 255, 0.6),
+    0 0 14px rgba(0, 191, 255, 0.3),
+    inset 0 0 6px rgba(0, 191, 255, 0.1);
+  animation: spin-ccw 7s linear infinite;
+}
+
+/* Anneau 3 — très fin, presque invisible, glow subtil */
+.ring-3 {
+  position: absolute;
+  width: 58%;
+  height: 58%;
+  border-radius: 50%;
+  border: 0.8px solid rgba(0, 191, 255, 0.4);
+  box-shadow: 0 0 8px rgba(0, 191, 255, 0.3);
+  animation: spin-cw 4s linear infinite;
+}
+
+/* Noyau central — cercle lumineux avec reflet interne */
+.orb-core {
+  position: absolute;
+  width: 38%;
+  height: 38%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 38% 32%,
+    rgba(180, 240, 255, 0.15),
+    rgba(0, 80, 130, 0.3) 50%,
+    rgba(0, 30, 60, 0.5)
+  );
+  border: 1px solid rgba(0, 210, 255, 0.7);
+  box-shadow:
+    0 0 10px rgba(0, 191, 255, 0.8),
+    0 0 25px rgba(0, 150, 220, 0.4),
+    inset 0 0 12px rgba(0, 191, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: core-breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes core-breathe {
+  0%,100% {
+    box-shadow: 0 0 10px rgba(0,191,255,0.8), 0 0 25px rgba(0,150,220,0.4), inset 0 0 12px rgba(0,191,255,0.2);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(0,220,255,1.0), 0 0 45px rgba(0,191,255,0.6), inset 0 0 20px rgba(0,210,255,0.35);
+  }
+}
+
+.orb-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 7px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.95);
+  letter-spacing: 0.18em;
+  text-shadow:
+    0 0 6px #00BFFF,
+    0 0 14px rgba(0,191,255,0.8);
+}
+
+@keyframes spin-cw  { to { transform: rotate(360deg);  } }
+@keyframes spin-ccw { to { transform: rotate(-360deg); } }
+
+/* ÉTATS DYNAMIQUES */
+
+/* Écoute : anneau 2 s'accélère et devient blanc */
+#jarvis-orb.state-listening .ring-2 {
+  border-top-color:    rgba(255, 255, 255, 0.95);
+  border-bottom-color: rgba(255, 255, 255, 0.90);
+  animation-duration: 2.5s;
+  box-shadow: 0 0 12px rgba(255,255,255,0.6), 0 0 30px rgba(0,191,255,0.4);
+}
+
+/* Parle : noyau pulse rapidement */
+#jarvis-orb.state-speaking .orb-core {
+  animation: speaking-pulse 0.35s ease-in-out infinite alternate;
+}
+
+@keyframes speaking-pulse {
+  from { transform: scale(0.94); }
+  to   { transform: scale(1.10); box-shadow: 0 0 22px rgba(0,220,255,1), 0 0 50px rgba(0,191,255,0.7); }
+}
+
+/* Bulle message utilisateur */
+.msg-user {
+  align-self: flex-end;
+  background: rgba(0, 80, 120, 0.25);
+  border: 1px solid rgba(0, 191, 255, 0.2);
+  border-radius: 12px 12px 2px 12px;
+  padding: 10px 16px;
+  max-width: 85%;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  color: #C8E8FF;
+}
+
+.msg-user::before {
+  content: 'VOUS';
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: var(--cyan-dim);
+  margin-bottom: 4px;
+}
+
+/* Bulle message JARVIS */
+.msg-jarvis {
+  align-self: flex-start;
+  background: rgba(0, 32, 60, 0.4);
+  border: 1px solid rgba(0, 191, 255, 0.15);
+  border-left: 2px solid #00BFFF;
+  border-radius: 2px 12px 12px 12px;
+  padding: 10px 16px;
+  max-width: 90%;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  color: var(--text-primary);
+  box-shadow: -4px 0 20px rgba(0, 191, 255, 0.05);
+}
+
+.msg-jarvis::before {
+  content: 'JARVIS';
+  display: block;
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  letter-spacing: 0.2em;
+  color: #00BFFF;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px #00BFFF;
+}
+
+/* Effet typing sur le texte de JARVIS */
+.typing-cursor::after {
+  content: '▋';
+  color: #00BFFF;
+  animation: blink 0.8s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* Animation scan caméra */
+@keyframes scan {
+  0%   { top: 0%; }
+  100% { top: 100%; }
+}
+
+/* HUD Panels (coins) */
+.hud-panel {
+  position: fixed;
+  padding: 10px 14px 12px;
+  z-index: 100;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Fond légèrement teinté */
+  background: rgba(4, 16, 35, 0.45);
+  border: 1px solid rgba(0, 191, 255, 0.1);
+}
+.hud-panel.top-left  { top: 0; left: 0; border-top: none; border-left: none; border-radius: 0 0 6px 0; }
+.hud-panel.top-right { top: 0; right: 0; border-top: none; border-right: none; border-radius: 0 0 0 6px; text-align: right; }
+
+.hud-line { display: flex; gap: 10px; align-items: baseline; margin: 3px 0; }
+.hud-label { color: rgba(0, 191, 255, 0.45); min-width: 38px; font-size: 10px; }
+.hud-value { color: #C8E4FF; font-weight: 600; font-size: 11px; }
+.status-ok { color: #00E676; text-shadow: 0 0 8px rgba(0, 230, 118, 0.6); }
+.status-err { color: #FF4040; }
+
+/* Ligne de séparation sous les panneaux */
+.hud-panel.top-left::after,
+.hud-panel.top-right::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,191,255,0.3), transparent);
+}
+
+/* Corner brackets (les coins décoratifs) */
+.hud-corner { position: absolute; width: 14px; height: 14px; }
+.hud-corner.tl { top:0; left:0;  border-top:1.5px solid #00BFFF44; border-left:1.5px solid #00BFFF44; }
+.hud-corner.tr { top:0; right:0; border-top:1.5px solid #00BFFF44; border-right:1.5px solid #00BFFF44; }
+.hud-corner.bl { bottom:0; left:0;  border-bottom:1.5px solid #00BFFF44; border-left:1.5px solid #00BFFF44; }
+.hud-corner.br { bottom:0; right:0; border-bottom:1.5px solid #00BFFF44; border-right:1.5px solid #00BFFF44; }
+
+/* Custom scrollbar for chat area */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.2); 
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 191, 255, 0.4); 
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 191, 255, 0.8); 
+}
+
+#status-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 32px;
+  background: rgba(2, 9, 22, 0.88);
+  border-top: 1px solid rgba(0, 191, 255, 0.12);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 0;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(0, 191, 255, 0.5);
+  z-index: 200;
+}
+
+/* Point clignotant devant le statut */
+#status-indicator {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #00E676;
+  box-shadow: 0 0 6px #00E676;
+  margin-right: 8px;
+  animation: blink-status 2s ease-in-out infinite;
+}
+
+@keyframes blink-status {
+  0%,100% { opacity: 1; }
+  50%     { opacity: 0.3; }
+}
+
+#status-text { color: rgba(200, 228, 255, 0.7); }
+#status-time { margin-left: auto; color: rgba(0, 191, 255, 0.6); }
