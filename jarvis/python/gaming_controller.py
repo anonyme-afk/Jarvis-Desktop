@@ -3,30 +3,37 @@ Contrôle de jeux vidéo via signaux matériels réels.
 Source : github.com/learncodebygaming/pydirectinput
 pip install pydirectinput
 """
-import pydirectinput
+try:
+    import pydirectinput
+    pydirectinput.FAILSAFE = True
+    pydirectinput.PAUSE = 0.02
+    PYDIRECTINPUT_AVAILABLE = True
+except ImportError:
+    PYDIRECTINPUT_AVAILABLE = False
+    
 import time
 import threading
 import cv2
 import base64
 from typing import Optional
 
-pydirectinput.FAILSAFE = True
-pydirectinput.PAUSE = 0.02
-
 class GamingController:
 
     def press_key(self, key: str, duration: float = 0.05):
         """Appuie sur une touche (traverse les protections DirectX)"""
+        if not PYDIRECTINPUT_AVAILABLE: return
         pydirectinput.keyDown(key)
         time.sleep(duration)
         pydirectinput.keyUp(key)
 
     def move_camera(self, dx: int, dy: int):
         """Déplace la caméra dans un jeu FPS/TPS"""
+        if not PYDIRECTINPUT_AVAILABLE: return
         pydirectinput.moveRel(dx, dy, relative=True)
 
     def walk_forward(self, seconds: float):
         """Marche en avant pendant N secondes"""
+        if not PYDIRECTINPUT_AVAILABLE: return
         pydirectinput.keyDown('w')
         time.sleep(seconds)
         pydirectinput.keyUp('w')

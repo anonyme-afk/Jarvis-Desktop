@@ -188,40 +188,47 @@ class VisionSurveillance:
         self.running = False
 
     def _surveillance_loop(self):
-        cap = cv2.VideoCapture(self.camera_index)
-        frame_count = 0
         while self.running:
-            ret, frame = cap.read()
-            if not ret:
-                time.sleep(0.1)
-                continue
-            frame_count += 1
+            cap = cv2.VideoCapture(self.camera_index)
+            frame_count = 0
+            try:
+                while self.running:
+                    ret, frame = cap.read()
+                    if not ret:
+                        time.sleep(1) # camera error, wait and retry
+                        break # break inner loop to re-initialize cap
+                    frame_count += 1
 
-            # Gestes : chaque frame
-            gesture_data = self.gesture_detector.process_frame(frame)
+                    # Gestes : chaque frame
+                    gesture_data = self.gesture_detector.process_frame(frame)
 
-            # Détection objets : toutes les 30 frames
-            if frame_count % 30 == 0:
-                detections = self.detector.detect(frame)
-                phone_detected = any(d['label'] == 'cell phone' for d in detections)
-                if phone_detected:
-                    self.callback("phone_detected", None)
+                    # Détection objets : toutes les 30 frames
+                    if frame_count % 30 == 0:
+                        detections = self.detector.detect(frame)
+                        phone_detected = any(d['label'] == 'cell phone' for d in detections)
+                        if phone_detected:
+                            self.callback("phone_detected", None)
 
-            # Reconnaissance faciale : toutes les 90 frames
-            if frame_count % 90 == 0:
-                name = self.face_recognizer.identify(frame)
-                if name and name != self._last_person_seen:
-                    self._last_person_seen = name
-                    self.callback("face_recognized", name)
+                    # Reconnaissance faciale : toutes les 90 frames
+                    if frame_count % 90 == 0:
+                        name = self.face_recognizer.identify(frame)
+                        if name and name != self._last_person_seen:
+                            self._last_person_seen = name
+                            self.callback("face_recognized", name)
 
-            # Détecter intrusion (personne inconnue)
-            if frame_count % 150 == 0:
-                name = self.face_recognizer.identify(frame)
-                if name == "inconnu":
-                    self.callback("intruder_detected", None)
+                    # Détecter intrusion (personne inconnue)
+                    if frame_count % 150 == 0:
+                        name = self.face_recognizer.identify(frame)
+                        if name == "inconnu":
+                            self.callback("intruder_detected", None)
 
-            time.sleep(0.033)  # ~30 FPS max
-        cap.release()
+                    time.sleep(0.033)  # ~30 FPS max
+            except Exception as e:
+                print(f"[VISION] Erreur pendant la surveillance: {e}")
+                time.sleep(5) # wait before restart
+            finally:
+                if cap is not None:
+                    cap.release()
 
 
 vision_surveillance = None

@@ -5,6 +5,7 @@ class NetworkMap {
     this.nodes = [];
     this.connections = [];
     this.animFrame = null;
+    this.lastDrawTime = 0;
     this.generateNodes(80);
     this.generateConnections();
   }
@@ -46,6 +47,11 @@ class NetworkMap {
   }
 
   draw(timestamp) {
+    this.animFrame = requestAnimationFrame(ts => this.draw(ts));
+    
+    if (timestamp - this.lastDrawTime < 33) return;
+    this.lastDrawTime = timestamp;
+
     const { ctx, canvas, nodes, connections } = this;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -82,8 +88,6 @@ class NetworkMap {
       ctx.fillStyle = color;
       ctx.fill();
     });
-
-    this.animFrame = requestAnimationFrame(ts => this.draw(ts));
   }
 
   start() { requestAnimationFrame(ts => this.draw(ts)); }
@@ -105,13 +109,21 @@ if (!window.jarvis) {
   window.jarvis = {
     sendMessage: async (message) => {
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const res = await fetch('http://127.0.0.1:5001/tool-chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message })
+          body: JSON.stringify({ message }),
+          signal: controller.signal
         });
-        return await res.json();
+        clearTimeout(timeoutId);
+        if (!res.body) return await res.json();
+        
+        // Return a special object that tells the caller it's a stream
+        return { isStream: true, reader: res.body.getReader() };
       } catch (e) {
+        if (e.name === 'AbortError') return { reply: "Délai d'attente dépassé (15s)." };
         return { reply: "Erreur de connexion au serveur Flask." };
       }
     },
@@ -128,6 +140,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initNetworkMap();
   initSpeechRecognition();
   checkApiHealth();
+  setInterval(checkApiHealth, 10000);
 
   // Add click handler to mic status panel for fallback activation
   const micStatus = document.getElementById('mic-status');
@@ -176,7 +189,15 @@ function initWaveform() {
     })
     .catch(() => {}); // pas de micro → mode idle
 
-  function draw() {
+  let lastDrawTime = 0;
+  function draw(time) {
+    requestAnimationFrame(draw);
+    if (document.hidden) return;
+    
+    // limit to ~30 FPS
+    if (time - lastDrawTime < 33) return;
+    lastDrawTime = time;
+
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const bars   = 64;
@@ -218,10 +239,9 @@ function initWaveform() {
     }
 
     idlePhase += 0.022;
-    requestAnimationFrame(draw);
   }
 
-  draw();
+  requestAnimationFrame(draw);
 }
 
 function initNetworkMap() {
@@ -263,6 +283,11 @@ function initSpeechRecognition() {
       // Ignore silence naturally
       return;
     }
+    if (event.error === 'network') {
+      const bText = document.getElementById('status-text');
+      if (bText) bText.textContent = 'RECONNEXION...';
+      return;
+    }
     console.warn('Speech recognition error:', event.error);
     if (event.error === 'not-allowed') {
       state.isListening = false;
@@ -274,16 +299,26 @@ function initSpeechRecognition() {
         micStatus.style.color = '';
       }
       const bText = document.getElementById('status-text');
-      if (bText) bText.textContent = 'ACCÈS REFUSÉ';
+      if (bText) bText.textContent = 'Autorise le micro dans ton navigateur';
     }
   };
+
+  let typingTimeout = null;
 
   state.recognition.onresult = (event) => {
     const last = event.results[event.results.length - 1];
     const transcript = last[0].transcript.trim();
-    if (last.isFinal && transcript.length > 0) {
-      if (window.sendToJarvis) window.sendToJarvis(transcript);
-      else sendToJarvis(transcript);
+    
+    // Afficher en temps réel
+    document.getElementById('input-text').value = transcript;
+
+    if (last.isFinal && transcript.length >= 2) {
+      if (typingTimeout) clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+        document.getElementById('input-text').value = '';
+        if (window.sendToJarvis) window.sendToJarvis(transcript);
+        else sendToJarvis(transcript);
+      }, 500);
     }
   };
 
@@ -291,8 +326,10 @@ function initSpeechRecognition() {
     state.recognitionActive = false;
     if (state.isListening) {
       try {
+        state.recognitionActive = true;
         state.recognition.start();
       } catch (e) {
+        state.recognitionActive = false;
         console.warn('SpeechRecognition auto-restart ignored:', e);
       }
     }
@@ -315,8 +352,10 @@ function toggleListening() {
 
     if (state.recognition && !state.recognitionActive) {
       try {
+        state.recognitionActive = true;
         state.recognition.start();
       } catch (e) {
+        state.recognitionActive = false;
         console.warn('SpeechRecognition start error:', e);
       }
     }
@@ -331,8 +370,10 @@ function toggleListening() {
 
     if (state.recognition && state.recognitionActive) {
       try {
+        state.recognitionActive = false;
         state.recognition.stop();
       } catch (e) {
+        state.recognitionActive = true;
         console.warn('SpeechRecognition stop error:', e);
       }
     }
@@ -348,11 +389,64 @@ async function sendToJarvis(message) {
   try {
     const result = await window.jarvis.sendMessage(message);
 
-    addMessage('jarvis', result.reply);
-    document.getElementById('status-text').textContent = 'EN ÉCOUTE';
+    if (result.isStream) {
+      const zone = document.getElementById('chat-zone');
+      const div = document.createElement('div');
+      div.className = 'msg-jarvis';
+      div.classList.add('typing-cursor');
+      zone.appendChild(div);
+      while (zone.childElementCount > 5) {
+        zone.firstChild.remove();
+      }
+      zone.scrollTop = zone.scrollHeight;
 
-    if (result.action) {
-      handleAction(result.action);
+      const reader = result.reader;
+      const decoder = new TextDecoder();
+      let streamAction = null;
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep the last potentially incomplete line in buffer
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.type === 'chunk') {
+              div.textContent += parsed.text;
+              zone.scrollTop = zone.scrollHeight;
+            } else if (parsed.type === 'done') {
+              if (parsed.action) streamAction = parsed.action;
+              if (parsed.tool_used) showToolIndicator(parsed.tool_used);
+            }
+          } catch (e) {}
+        }
+      }
+      div.classList.remove('typing-cursor');
+      document.getElementById('status-text').textContent = 'EN ÉCOUTE';
+
+      setTimeout(() => {
+        div.style.transition = 'opacity 1s';
+        div.style.opacity = '0';
+        setTimeout(() => div.remove(), 1000);
+      }, 30000);
+
+      if (streamAction) {
+        handleAction(streamAction);
+      }
+    } else {
+      addMessage('jarvis', result.reply);
+      document.getElementById('status-text').textContent = 'EN ÉCOUTE';
+
+      if (result.action) {
+        handleAction(result.action);
+      }
+      if (result.tool_used) {
+        showToolIndicator(result.tool_used);
+      }
     }
   } catch (err) {
     addMessage('jarvis', 'Je rencontre une difficulté de connexion.');
@@ -383,6 +477,10 @@ function addMessage(role, text) {
     zone.appendChild(div);
   }
 
+  while (zone.childElementCount > 5) {
+    zone.firstChild.remove();
+  }
+
   zone.scrollTop = zone.scrollHeight;
 
   setTimeout(() => {
@@ -390,6 +488,25 @@ function addMessage(role, text) {
     div.style.opacity = '0';
     setTimeout(() => div.remove(), 1000);
   }, 30000);
+}
+
+function showToolIndicator(tool) {
+  let indicator = document.getElementById('tool-indicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'tool-indicator';
+    indicator.style.cssText = `
+      position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
+      background: rgba(0, 191, 255, 0.15); border: 1px solid #00BFFF;
+      color: #00BFFF; padding: 4px 10px; border-radius: 4px;
+      font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 0.1em;
+      transition: opacity 0.5s; opacity: 0; z-index: 1000;
+    `;
+    document.body.appendChild(indicator);
+  }
+  indicator.textContent = `OUTIL: ${tool.toUpperCase()}`;
+  indicator.style.opacity = '1';
+  setTimeout(() => indicator.style.opacity = '0', 2000);
 }
 
 function handleAction(action) {
@@ -463,7 +580,11 @@ async function analyzeScreen() {
   document.getElementById('jarvis-orb').classList.remove('state-listening');
 }
 
+let lastApiHealthCheck = 0;
 async function checkApiHealth() {
+  const now = Date.now();
+  if (now - lastApiHealthCheck < 10000) return;
+  lastApiHealthCheck = now;
   try {
     const response = await fetch('http://127.0.0.1:5001/health'); // fallback web endpoint
     if (!response.ok) throw new Error();
@@ -481,7 +602,51 @@ async function checkApiHealth() {
   }
 }
 
+let userMessageHistory = [];
+let userMessageIndex = -1;
+
 window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    // Stop VAD or TTS
+    fetch('http://127.0.0.1:5001/stop-tts', { method: 'POST' }).catch(e=>{});
+  }
+  
+  if (e.ctrlKey && e.key.toLowerCase() === 'l') {
+    e.preventDefault();
+    document.getElementById('chat-zone').innerHTML = '';
+  }
+
+  if (e.key === 'ArrowUp' && document.activeElement.id === 'input-text') {
+    e.preventDefault();
+    if (userMessageHistory.length > 0) {
+      if (userMessageIndex < userMessageHistory.length - 1) userMessageIndex++;
+      document.activeElement.value = userMessageHistory[userMessageIndex];
+    }
+  }
+
+  if (e.key === 'ArrowDown' && document.activeElement.id === 'input-text') {
+    e.preventDefault();
+    if (userMessageIndex > 0) {
+      userMessageIndex--;
+      document.activeElement.value = userMessageHistory[userMessageIndex];
+    } else {
+      userMessageIndex = -1;
+      document.activeElement.value = '';
+    }
+  }
+
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+    const val = e.target.value.trim();
+    if (val) {
+      userMessageHistory.unshift(val);
+      if (userMessageHistory.length > 50) userMessageHistory.pop();
+      userMessageIndex = -1;
+      e.target.value = '';
+      if (window.sendToJarvis) window.sendToJarvis(val);
+      else sendToJarvis(val);
+    }
+  }
+
   if ((e.code === 'Space' || e.key === ' ') && !e.target.matches('input, textarea, [contenteditable]')) {
     e.preventDefault();
     toggleListening();

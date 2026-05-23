@@ -1,73 +1,18 @@
-# Serveur
-flask>=3.0.0
-flask-cors>=4.0.0
-python-dotenv>=1.0.0
-requests>=2.31.0
-
-# Multi-API IA
-google-generativeai>=0.8.0
-anthropic>=0.34.0
-openai>=1.40.0
-cohere>=5.9.0
-
-# Mémoire avancée (installer dans l'ordre)
-mem0ai
-chromadb
-
-# Recherche web
-duckduckgo-search
-
-# Vision
+flask
+flask-cors
+google-generativeai
+requests
+python-dotenv
 opencv-python
 Pillow
-ultralytics
-mediapipe
-face_recognition
-
-# Gaming
+SpeechRecognition
+pyttsx3
+psutil
+duckduckgo-search
+apscheduler
+apprise
 pydirectinput
 pyautogui
-
-# Navigation web autonome
-browser-use
-playwright
-langchain-google-genai
-
-# OSINT
-python-whois
-dnspython
-
-# Audio
-SpeechRecognition
-pyaudio
-pyttsx3
-numpy
-
-# Système
-psutil
 pyperclip
-
-# Notifications
-apprise
-
-# Planification
-APScheduler
-
-# VAD
-torch
-torchaudio
-
-# NFC (optionnel, nécessite lecteur USB)
-# nfcpy
-
-# Hardware serial (Arduino)
-pyserial
-
-# Météo (sans clé via wttr.in)
-# Pas de librairie, juste requests
-
-# Vitesse internet
 speedtest-cli
-
-# Vidéo/Media
-ffmpeg-python
+wikipedia-api

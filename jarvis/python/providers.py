@@ -19,6 +19,33 @@ PROVIDERS = {
         "vision": True,
         "url": "https://aistudio.google.com"
     },
+    "gemini-3.5-flash": {
+        "name": "Gemini 3.5 Flash",
+        "model": "gemini-3.5-flash",
+        "type": "gemini",
+        "env_key": "GEMINI_API_KEY",
+        "free": True,
+        "vision": True,
+        "url": "https://aistudio.google.com"
+    },
+    "gemini-2.5-flash": {
+        "name": "Gemini 2.5 Flash",
+        "model": "gemini-2.5-flash",
+        "type": "gemini",
+        "env_key": "GEMINI_API_KEY",
+        "free": True,
+        "vision": True,
+        "url": "https://aistudio.google.com"
+    },
+    "gemini-exp": {
+        "name": "Gemini Experimental",
+        "model": "gemini-exp-1206",
+        "type": "gemini",
+        "env_key": "GEMINI_API_KEY",
+        "free": True,
+        "vision": True,
+        "url": "https://aistudio.google.com"
+    },
     "groq-free": {
         "name": "Groq Llama3 (Gratuit ultra-rapide)",
         "model": "llama-3.1-8b-instant",
@@ -120,9 +147,65 @@ Pour afficher une carte : {"action":"show_map","query":"..."}
 
 class AIProvider:
     def __init__(self):
+        self.response_cache = {}
+        self._cache_keys = []
         # Charger le provider actif depuis .env ou défaut
         provider_id = os.environ.get('AI_PROVIDER', 'gemini-free')
         self.set_provider(provider_id)
+
+    def _get_cache_key(self, messages, image_b64):
+        # On hash de manière basique la requête
+        msg_str = json.dumps(messages, sort_keys=True)
+        img_prefix = image_b64[:30] if image_b64 else ""
+        return f"{self.current['model']}_{msg_str}_{img_prefix}"
+
+    def chat(self, messages: list, image_b64: str = None) -> str:
+        cache_key = self._get_cache_key(messages, image_b64)
+        if cache_key in self.response_cache:
+            return self.response_cache[cache_key]
+
+        err = None
+        # Essai 1
+        try:
+            res = self._do_chat(messages, image_b64)
+            self._save_cache(cache_key, res)
+            return res
+        except Exception as e:
+            err = e
+            print(f"[JARVIS] Erreur IA (Essai 1): {e}")
+        
+        # Essai 2 (Retry)
+        try:
+            res = self._do_chat(messages, image_b64)
+            self._save_cache(cache_key, res)
+            return res
+        except Exception as e:
+            print(f"[JARVIS] Erreur IA (Essai 2): {e}")
+
+        # Fallback automatique
+        if self.provider_id != "groq-free":
+            print("[JARVIS] Bascule automatique sur groq-free suite aux erreurs.")
+            self.set_provider("groq-free")
+            try:
+                res = self._do_chat(messages, image_b64)
+                self._save_cache(cache_key, res)
+                return res
+            except Exception as e:
+                return f"Erreur critique IA (Fallback Groq échoué): {e}"
+        return f"Erreur critique IA: {err}"
+
+    def _save_cache(self, key, value):
+        self.response_cache[key] = value
+        self._cache_keys.append(key)
+        if len(self._cache_keys) > 200:
+            oldest_key = self._cache_keys.pop(0)
+            if oldest_key in self.response_cache:
+                del self.response_cache[oldest_key]
+
+    def chat_stream(self, messages: list, image_b64: str = None):
+        # Implementation de stream...
+        # On va créer une méthode séparée plus tard.
+        pass
 
     def set_provider(self, provider_id: str):
         if provider_id not in PROVIDERS:
@@ -163,7 +246,7 @@ class AIProvider:
         except:
             return []
 
-    def chat(self, messages: list, image_b64: str = None) -> str:
+    def _do_chat(self, messages: list, image_b64: str = None) -> str:
         p = self.current
         ptype = p['type']
 
@@ -181,8 +264,11 @@ class AIProvider:
             return "Provider non supporté."
 
     def _chat_gemini(self, messages, image_b64=None):
+        api_key = os.environ.get('GEMINI_API_KEY')
+        if not api_key:
+            return "Configure ta clé API dans .env"
         import google.generativeai as genai
-        genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+        genai.configure(api_key=api_key)
         model = genai.GenerativeModel(self.current['model'])
         parts = [SYSTEM_PROMPT]
         for m in messages:

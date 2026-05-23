@@ -1,191 +1,59 @@
-# JARVIS Desktop v3.0
+# JARVIS Desktop 🌐🤖
 
-Assistant IA holographique style Iron Man.
-Vision, OSINT, Gaming, NFC, Mémoire, Domotique, Navigation web autonome.
-Fonctionne sur Windows, Mac et Linux. Même les vieux PC.
+Bienvenue dans JARVIS Desktop, votre assistant IA personnel multimodale ultra-avancé propulsé par Gemini, avec contrôle système (Windows), OSINT, vision par ordinateur, et mémoire.
 
-**Lien du site preview (GitHub) :** [https://github.com/anonyme-afk/Jarvis-Desktop](https://github.com/anonyme-afk/Jarvis-Desktop)
-**Aperçu Web AI Studio :** [https://ais-pre-hzhw3abu2vanfcaj65gfij-114166625783.europe-west2.run.app](https://ais-pre-hzhw3abu2vanfcaj65gfij-114166625783.europe-west2.run.app)
+## 🚀 Installation Ultra Simple (Windows)
 
-## Ce que JARVIS peut faire
+1. Double-cliquez sur `install.bat`
+2. Attendez la fin de l'installation des dépendances.
+3. Ouvrez le fichier `.env` qui a été créé et ajoutez votre `GEMINI_API_KEY`.
+4. Double-cliquez sur `START_JARVIS.bat` pour lancer JARVIS.
 
-### IA & Recherche
-- Répond à n'importe quelle question (10 providers IA supportés)
-- Recherche web en temps réel (DuckDuckGo, gratuit)
-- Briefing météo sans clé API (wttr.in)
-- Résumés Wikipedia instantanés
-- Navigation web autonome (browser-use)
+C'est tout ! 🎉
 
-### Vision
-- Voit via la webcam (YOLOv8 — reconnaît 80+ objets)
-- Reconnaît ton visage et te salue automatiquement
-- Détecte les intrus et envoie une alerte
-- Détecte les gestes de la main (MediaPipe)
-    - Index levé → volume +
-    - Main ouverte → pause
-    - Poing → mute
+---
 
-### OSINT (Sources Ouvertes)
-- Géolocalisation d'une IP
-- WHOIS d'un domaine
-- Vérification d'email compromis (HIBP)
-- Recherche de pseudo sur 7 plateformes
-- DNS lookup
-- Scan de ports
-- Extraction de métadonnées EXIF
+## 🔑 Obtenir une Clé API Gratuite
 
-### Gaming
-- Analyse ton écran de jeu en direct
-- Contrôle clavier/souris via signaux matériels (DirectX)
-- Mode farm automatique
+JARVIS utilise par défaut **Gemini 1.5 Flash**, qui est gratuit.
+1. Allez sur [Google AI Studio](https://aistudio.google.com)
+2. Cliquez sur **Get API Key**
+3. Créez une nouvelle clé
+4. Collez la clé dans votre fichier `.env` : `GEMINI_API_KEY=votre-clef-ici`
 
-### Système
-- Infos CPU/RAM/Disque/Batterie en temps réel
-- Test vitesse internet
-- Screenshot et analyse
-- Ouvrir des applications
-- Taper du texte automatiquement
+*(Vous pouvez modifier le fournisseur d'IA directement via le menu ⚙ en haut à droite de l'interface !)*
 
-### Mémoire
-- Mémorise tes préférences et habitudes (Mem0 + ChromaDB)
-- Contexte persistant entre les sessions
-- Se souvient de "je préfère Python" 2 semaines plus tard
+---
 
-### Proactivité
-- Briefing matinal automatique à 7h
-- Alerte si CPU/RAM > 90%
-- Rappels vocaux planifiés
+## 🎙️ Commandes vocales courantes
 
-### Notifications
-- Discord, Telegram, Gotify
-- Alertes urgentes pour intrusions
+JARVIS comprend le naturel, mais voici quelques exemples d'actions :
 
-### NFC (avec lecteur USB ~10€)
-- Déverrouillage par badge
-- Profils instantanés (Mode Code, Mode Gaming, etc.)
+| Action | Exemple de formulation verbale / texte |
+| --- | --- |
+| **Site Web** | *"Jarvis, ouvre Spotify s'il te plaît"* |
+| **Caméra (Vision)** | *"Active la caméra", "Qu'est-ce que tu vois ?"* |
+| **Rappels** | *"Rappelle-moi dans 5 minutes de sortir le linge"* |
+| **Jeux / Farming**| *"Active le mode farm sur la touche espace pour 300 secondes"* |
+| **Analyse** | *"Fais un port scan de monsite.com", "Analyse cette adresse IP"* |
+| **Mémoire** | *"Souviens-toi que mon film préféré est Inception"* |
 
-## Installation
+---
 
-### 1. Prérequis (TRÈS IMPORTANT)
-- Node.js v18+ : https://nodejs.org
-- **Python 3.11 ou 3.12** : https://www.python.org/downloads/release/python-3119/
-  - ⚠️ **NE SURTOUT PAS utiliser Python 3.13 ou 3.14** (Les librairies d'Intelligence Artificielle et de Vision comme `Pillow` ou `OpenCV` planteront à l'installation car elles ne sont pas encore optimisées pour).
-  - *Lors de l'installation de Python sur Windows, cochez bien la case **"Add python.exe to PATH"** en bas de la fenêtre !*
-- Git : https://git-scm.com
-
-### 2. Cloner
-```bash
-git clone https://github.com/anonyme-afk/Jarvis-Desktop.git
-cd Jarvis-Desktop
-```
-
-### 3. Dépendances Node
-```bash
-npm install
-```
-
-### 4. Dépendances Python
-```bash
-pip install -r python/requirements.txt
-```
-
-Problèmes courants :
-- PyAudio Windows : `pip install pipwin && pipwin install pyaudio`
-- PyAudio Mac : `brew install portaudio && pip install pyaudio`
-- face_recognition : `pip install cmake && pip install face_recognition`
-
-### 5. Configurer
-```bash
-cp .env.example .env
-# Édite .env et mets au moins GEMINI_API_KEY
-# Clé gratuite sur : https://aistudio.google.com
-```
-
-### 6. Lancer
-```bash
-npm start
-```
-
-## Commandes vocales
-
-| Commande | Action |
-|---|---|
-| "JARVIS, cherche [sujet]" | Recherche web DuckDuckGo |
-| "JARVIS, qu'est-ce que tu vois ?" | Analyse webcam |
-| "JARVIS, qui est là ?" | Reconnaissance faciale |
-| "JARVIS, IP de 8.8.8.8" | Géolocalisation IP |
-| "JARVIS, infos sur le pseudo [nom]" | Recherche OSINT |
-| "JARVIS, infos système" | CPU/RAM/Disque |
-| "JARVIS, quel temps à [ville]" | Météo |
-| "JARVIS, rappelle-moi dans 10 min de [tâche]" | Rappel |
-| "JARVIS, analyse le jeu" | Screenshot + analyse IA |
-| "JARVIS, va sur [site] et [tâche]" | Navigation autonome |
-
-## Raccourcis clavier
+## ⌨️ Raccourcis clavier (dans l'interface Web)
 
 | Touche | Action |
-|---|---|
-| ESPACE | Activer/désactiver le micro |
-| C | Activer/désactiver la caméra |
-| N | Afficher/masquer la carte réseau |
-| ⚡ (bouton bas gauche) | Panneau d'outils |
-| ⚙ (bouton haut droit) | Changer de modèle IA |
+| --- | --- |
+| **`Espace`** | Basculer l'écoute (activer/désactiver le micro) |
+| **`C`** | Allumer / éteindre le flux de la caméra web (`/vision`) |
+| **`M`** | Activer temporairement l'overlay du scan Neuro-Réseau |
 
-## Structure du projet
+---
 
-```
-Jarvis-Desktop/
-├── index.html              Interface principale
-├── style.css               Styles + animations HUD
-├── renderer.js             Logique frontend
-├── main.js                 Process Electron
-├── preload.js              Bridge IPC sécurisé
-├── package.json
-├── .env                    Clés API (ne jamais commit)
-├── .gitignore
-├── python/
-│   ├── server.py           Serveur principal v3.0
-│   ├── providers.py        Multi-API (10 providers)
-│   ├── memory.py           Mémoire basique
-│   ├── mem0_manager.py     Mémoire avancée (Mem0/ChromaDB)
-│   ├── osint_engine.py     Outils OSINT
-│   ├── vision_engine.py    Vision (YOLO/MediaPipe/FaceRec)
-│   ├── gaming_controller.py Contrôle gaming
-│   ├── browser_agent.py    Navigation autonome
-│   ├── nfc_manager.py      Gestion NFC
-│   ├── notifier.py         Notifications (Discord/Telegram)
-│   ├── scheduler.py        Tâches autonomes
-│   ├── vad_manager.py      Détection vocale (interruption)
-│   ├── requirements.txt
-│   ├── faces/              Photos pour reconnaissance faciale
-│   ├── tools/
-│   │   ├── search_tool.py  Recherche web
-│   │   └── tool_registry.py Registre des outils
-│   └── plugins/
-│       ├── phone_plugin.py  Contrôle Android (ADB)
-│       └── browser_plugin.py Navigation basique
-└── debug.md                Guide de débogage
-```
+## 🛠️ Dépannage (Troubleshooting)
 
-## Ajouter un outil personnalisé
-
-1. Créer `python/plugins/mon_outil.py`
-2. Hériter de `BasePlugin`
-3. Implémenter `can_handle()` et `handle()`
-4. Ajouter dans `python/plugins/__init__.py`
-
-## Ajouter un profil NFC
-
-1. Brancher le lecteur USB NFC
-2. Passer une carte sur le lecteur
-3. L'UID apparaît dans les logs
-4. Éditer `python/nfc_profiles.json`
-
-## Contribuer
-
-Fork → branche → PR.
-Issues bienvenues pour les bugs et les demandes de fonctionnalités.
-
-## Licence
-
-MIT — Libre d'utilisation, modification et distribution.
+- **Le microphone ne fonctionne pas** : Vérifiez que l'icône de caméra/micro en haut de la barre de votre navigateur (Chrome/Edge) vous permet l'accès. (Erreur "Autorise le micro dans ton navigateur").
+- **Statut "HORS LIGNE" en rouge / JARVIS ne répond pas du tout** : Le serveur Python ne tourne pas. Vérifiez que votre terminal où vous avez écrit `python jarvis/python/server.py` ne comporte pas d'erreur de clé manquante ou de module non installé.
+- **"Speech recognition error: no-speech" (dans la console)** : C'est normal. C'est l'API de base du navigateur qui dit "Je n'entends rien". JARVIS ignore silencieusement cette erreur.
+- **Port 5001 occupé** : Dans `jarvis/python/server.py`, changez le port `5001` par `5005`, et faites le même changement dans `renderer.js` et `vite.config.ts`.
+- **Une erreur `dlib` ou `face_recognition` ou `torch` apparait** : Nous avons retiré ces dépendances du fichier `requirements.txt` natif car elles sont très complexes à installer sous Windows. Le système JARVIS ignore silencieusement ces erreurs et fonctionne très bien sans. L'installation de la vision et du VAD local devient alors simplement désactivée (fallback classique).

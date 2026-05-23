@@ -24,24 +24,50 @@ app  = Flask(__name__)
 CORS(app)
 conversation = []
 
+import queue
+
 # TTS
+tts_queue = queue.Queue()
 try:
     import pyttsx3
     _tts = pyttsx3.init()
     _tts.setProperty('rate', 165)
+    _tts.setProperty('volume', 0.9)
+    voices = _tts.getProperty('voices')
+    for v in voices:
+        if 'fr' in v.id.lower() or 'french' in v.name.lower():
+            _tts.setProperty('voice', v.id)
+            break
     USE_TTS = True
 except:
     USE_TTS = False
 
-def speak(text: str):
-    if USE_TTS:
-        vad.set_ai_speaking(True)
-        def _speak():
-            if not vad.interrupt_event.is_set():
+def _tts_worker():
+    while True:
+        text = tts_queue.get()
+        if text is None: break
+        if USE_TTS and not vad.interrupt_event.is_set():
+            vad.set_ai_speaking(True)
+            try:
                 _tts.say(text)
                 _tts.runAndWait()
+            except Exception as e:
+                print(f"[TTS] Erreur: {e}")
             vad.set_ai_speaking(False)
-        threading.Thread(target=_speak, daemon=True).start()
+        tts_queue.task_done()
+
+if USE_TTS:
+    threading.Thread(target=_tts_worker, daemon=True).start()
+
+def speak(text: str):
+    if not USE_TTS: return
+    # Coupe les longues phrases
+    if len(text) > 200:
+        sentences = [s.strip() for s in text.replace('!', '.').replace('?', '.').split('.') if s.strip()]
+        for s in sentences:
+            tts_queue.put(s)
+    else:
+        tts_queue.put(text)
 
 # ===== CALLBACK VISION =====
 def on_vision_event(event_type: str, data):
@@ -76,6 +102,17 @@ def on_nfc_card(uid: str, profile: dict):
     speak(f"Carte détectée. Activation du profil {profile.get('name', 'inconnu')}.")
     nfc_manager.execute_profile_actions(profile)
 
+# ===== BACKGROUND CLEANUP =====
+def _background_tasks():
+    while True:
+        time.sleep(300) # 5 minutes
+        memory.save()
+        if len(conversation) > 0:
+            # Nettoyage si très inactif (on simplifie)
+            pass
+
+threading.Thread(target=_background_tasks, daemon=True).start()
+
 # ===== DÉMARRAGE DES SERVICES EN FOND =====
 def start_background_services():
     global vision_surv, jarvis_scheduler
@@ -95,6 +132,25 @@ def start_background_services():
 threading.Thread(target=start_background_services, daemon=True).start()
 
 # ===== ROUTES =====
+
+@app.route('/stop-tts', methods=['POST'])
+def stop_tts():
+    if USE_TTS:
+        while not tts_queue.empty():
+            try:
+                tts_queue.get_nowait()
+                tts_queue.task_done()
+            except:
+                break
+        try:
+            _tts.stop()
+        except:
+            pass
+        vad.interrupt_event.set()
+        time.sleep(0.5)
+        vad.interrupt_event.clear()
+        vad.set_ai_speaking(False)
+    return jsonify({"success": True})
 
 @app.route('/health')
 def health():
@@ -171,11 +227,22 @@ Message: {message}
         decision = json.loads(raw)
 
         if "reply" in decision:
-            speak(decision['reply'])
+            global conversation
+            reply_text = decision["reply"]
             conversation.append({"role":"user","content":message})
-            conversation.append({"role":"assistant","content":decision['reply']})
-            advanced_memory.add(f"User: {message} | JARVIS: {decision['reply'][:100]}")
-            return jsonify({"reply": decision['reply'], "action": None, "tool_used": None})
+            conversation.append({"role":"assistant","content":reply_text})
+            conversation = conversation[-10:]
+            advanced_memory.add(f"User: {message} | JARVIS: {reply_text[:100]}")
+            
+            def generate():
+                speak(reply_text)
+                words = reply_text.split(" ")
+                for i, w in enumerate(words):
+                    time.sleep(0.05) # Simulation de stream progressif
+                    yield json.dumps({"type": "chunk", "text": w + (" " if i < len(words)-1 else "")}) + "\n"
+                yield json.dumps({"type": "done"}) + "\n"
+                
+            return app.response_class(generate(), mimetype='application/x-ndjson')
 
         tool_name = decision.get('tool')
         params = decision.get('params', {})
@@ -192,19 +259,35 @@ Message: {message}
             result = executor.execute(tool_name, params)
 
         summary = result.get("summary", json.dumps(result, ensure_ascii=False)[:300])
-        reply = ai.chat([{"role":"user","content":f"Résume en 1-2 phrases: {summary}"}])
-
-        speak(reply)
+        reply_text = ai.chat([{"role":"user","content":f"Résume en 1-2 phrases l'action effectuée sans dire que c'est un résumé: {summary}"}])
         action = result.get("action", None)
-        return jsonify({"reply": reply, "action": action, "tool_used": tool_name})
+
+        def generate_tool():
+            speak(reply_text)
+            words = reply_text.split(" ")
+            for i, w in enumerate(words):
+                time.sleep(0.05)
+                yield json.dumps({"type": "chunk", "text": w + (" " if i < len(words)-1 else "")}) + "\n"
+            yield json.dumps({"type": "done", "action": action, "tool_used": tool_name}) + "\n"
+
+        return app.response_class(generate_tool(), mimetype='application/x-ndjson')
 
     except json.JSONDecodeError:
+        global conversation
         # Réponse directe sans outil
-        reply = ai.chat(conversation + [{"role":"user","content":message}])
-        speak(reply)
+        reply_text = ai.chat(conversation + [{"role":"user","content":message}])
         conversation.append({"role":"user","content":message})
-        conversation.append({"role":"assistant","content":reply})
-        return jsonify({"reply": reply, "action": None, "tool_used": None})
+        conversation.append({"role":"assistant","content":reply_text})
+        conversation = conversation[-10:]
+        def generate_direct():
+            speak(reply_text)
+            words = reply_text.split(" ")
+            for i, w in enumerate(words):
+                time.sleep(0.05)
+                yield json.dumps({"type": "chunk", "text": w + (" " if i < len(words)-1 else "")}) + "\n"
+            yield json.dumps({"type": "done"}) + "\n"
+            
+        return app.response_class(generate_direct(), mimetype='application/x-ndjson')
     except Exception as e:
         return jsonify({"reply": f"Erreur: {str(e)}", "action": None}), 500
 
@@ -272,4 +355,15 @@ if __name__ == '__main__':
     if saved_provider:
         ai.set_provider(saved_provider)
     print(f"[JARVIS] v3.0 — Provider: {ai.current['name']}")
-    app.run(host='127.0.0.1', port=5001, debug=False)
+    
+    import socket
+    def is_port_in_use(port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            return s.connect_ex(('127.0.0.1', port)) == 0
+
+    port_to_use = 5001
+    if is_port_in_use(5001):
+        print("[JARVIS] Port 5001 occupé, passage au port 5002.")
+        port_to_use = 5002
+
+    app.run(host='127.0.0.1', port=port_to_use, debug=False)
