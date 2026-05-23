@@ -66,9 +66,11 @@ Fonctionne sur Windows, Mac et Linux. Même les vieux PC.
 
 ## Installation
 
-### 1. Prérequis
+### 1. Prérequis (TRÈS IMPORTANT)
 - Node.js v18+ : https://nodejs.org
-- Python 3.10+ : https://python.org
+- **Python 3.11 ou 3.12** : https://www.python.org/downloads/release/python-3119/
+  - ⚠️ **NE SURTOUT PAS utiliser Python 3.13 ou 3.14** (Les librairies d'Intelligence Artificielle et de Vision comme `Pillow` ou `OpenCV` planteront à l'installation car elles ne sont pas encore optimisées pour).
+  - *Lors de l'installation de Python sur Windows, cochez bien la case **"Add python.exe to PATH"** en bas de la fenêtre !*
 - Git : https://git-scm.com
 
 ### 2. Cloner
