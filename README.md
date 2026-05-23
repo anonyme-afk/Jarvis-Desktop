@@ -1,19 +1,21 @@
-# JARVIS Desktop 🌐🤖
+# JARVIS Desktop
+
+**Live Demo**: [https://anonyme-afk.github.io/Jarvis-Desktop/](https://anonyme-afk.github.io/Jarvis-Desktop/)
 
 Bienvenue dans JARVIS Desktop, votre assistant IA personnel multimodale ultra-avancé propulsé par Gemini, avec contrôle système (Windows), OSINT, vision par ordinateur, et mémoire.
 
-## 🚀 Installation Ultra Simple (Windows)
+## Installation Ultra Simple (Windows)
 
 1. Double-cliquez sur `install.bat`
 2. Attendez la fin de l'installation des dépendances.
 3. Ouvrez le fichier `.env` qui a été créé et ajoutez votre `GEMINI_API_KEY`.
 4. Double-cliquez sur `START_JARVIS.bat` pour lancer JARVIS.
 
-C'est tout ! 🎉
+C'est tout !
 
 ---
 
-## 🔑 Obtenir une Clé API Gratuite
+## Obtenir une Clé API Gratuite
 
 JARVIS utilise par défaut **Gemini 1.5 Flash**, qui est gratuit.
 1. Allez sur [Google AI Studio](https://aistudio.google.com)
@@ -21,11 +23,11 @@ JARVIS utilise par défaut **Gemini 1.5 Flash**, qui est gratuit.
 3. Créez une nouvelle clé
 4. Collez la clé dans votre fichier `.env` : `GEMINI_API_KEY=votre-clef-ici`
 
-*(Vous pouvez modifier le fournisseur d'IA directement via le menu ⚙ en haut à droite de l'interface !)*
+*(Vous pouvez modifier le fournisseur d'IA directement via le menu en haut à droite de l'interface !)*
 
 ---
 
-## 🎙️ Commandes vocales courantes
+## Commandes vocales courantes
 
 JARVIS comprend le naturel, mais voici quelques exemples d'actions :
 
@@ -40,7 +42,7 @@ JARVIS comprend le naturel, mais voici quelques exemples d'actions :
 
 ---
 
-## ⌨️ Raccourcis clavier (dans l'interface Web)
+## Raccourcis clavier (dans l'interface Web)
 
 | Touche | Action |
 | --- | --- |
@@ -50,7 +52,7 @@ JARVIS comprend le naturel, mais voici quelques exemples d'actions :
 
 ---
 
-## 🛠️ Dépannage (Troubleshooting)
+## Dépannage (Troubleshooting)
 
 - **Le microphone ne fonctionne pas** : Vérifiez que l'icône de caméra/micro en haut de la barre de votre navigateur (Chrome/Edge) vous permet l'accès. (Erreur "Autorise le micro dans ton navigateur").
 - **Statut "HORS LIGNE" en rouge / JARVIS ne répond pas du tout** : Le serveur Python ne tourne pas. Vérifiez que votre terminal où vous avez écrit `python jarvis/python/server.py` ne comporte pas d'erreur de clé manquante ou de module non installé.
