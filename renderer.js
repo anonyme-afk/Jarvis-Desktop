@@ -450,3 +450,82 @@ window.sendToJarvis = async function(message) {
   // Masquer après 8 secondes
   setTimeout(hideNetworkMap, 8000);
 };
+
+// Charger les providers disponibles
+async function loadProviders() {
+  try {
+    const r = await fetch('http://127.0.0.1:5001/providers');
+    const data = await r.json();
+    renderProviderList(data.providers, data.ollama_models);
+  } catch(e) {
+    console.warn("Could not load providers", e);
+  }
+}
+
+function renderProviderList(providers, ollama_models) {
+  const list = document.getElementById('provider-list');
+  list.innerHTML = '';
+  providers.forEach(p => {
+    const div = document.createElement('div');
+    div.style.cssText = `
+      padding:5px 8px; margin:2px 0; cursor:pointer;
+      border-radius:3px; font-family:'Rajdhani',sans-serif;
+      font-size:11px; letter-spacing:0.08em;
+      color:${p.available ? '#C8E4FF' : '#3A5A7A'};
+      border:1px solid ${p.available ? 'rgba(0,191,255,0.15)' : 'transparent'};
+      display:flex; justify-content:space-between; align-items:center;
+    `;
+    const badge = p.free
+      ? '<span style="color:#00E676;font-size:9px">GRATUIT</span>'
+      : '<span style="color:#FFB300;font-size:9px">PAYANT</span>';
+    div.innerHTML = `<span>${p.name}</span>${p.available ? badge : '<span style="color:#555;font-size:9px">CLEF MANQUANTE</span>'}`;
+    if (p.available) {
+      div.onmouseenter = () => div.style.background = 'rgba(0,191,255,0.08)';
+      div.onmouseleave = () => div.style.background = '';
+      div.onclick = () => switchProvider(p.id);
+    }
+    list.appendChild(div);
+  });
+
+  // Modèles Ollama
+  const ollamaList = document.getElementById('ollama-list');
+  ollamaList.innerHTML = '';
+  if (ollama_models.length === 0) {
+    ollamaList.innerHTML = '<div style="color:#3A5A7A;font-size:10px;font-family:Rajdhani">Ollama non détecté</div>';
+  } else {
+    ollama_models.forEach(m => {
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:4px 8px;cursor:pointer;color:#C8E4FF;font-family:Rajdhani,sans-serif;font-size:11px;';
+      div.textContent = `▸ ${m}`;
+      div.onclick = () => {
+        fetch('http://127.0.0.1:5001/set-provider', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({provider_id:'ollama-auto'})
+        });
+        document.getElementById('model-name').textContent = m.toUpperCase();
+        toggleProviderSelector();
+      };
+      ollamaList.appendChild(div);
+    });
+  }
+}
+
+async function switchProvider(providerId) {
+  const r = await fetch('http://127.0.0.1:5001/set-provider', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({provider_id: providerId})
+  });
+  const data = await r.json();
+  document.getElementById('model-name').textContent = data.provider.toUpperCase().slice(0,16);
+  toggleProviderSelector();
+  addMessage('jarvis', `Modèle changé : ${data.provider}`);
+}
+
+function toggleProviderSelector() {
+  const sel = document.getElementById('provider-selector');
+  sel.style.display = sel.style.display === 'none' ? 'block' : 'none';
+}
+
+// Appeler au démarrage
+loadProviders();

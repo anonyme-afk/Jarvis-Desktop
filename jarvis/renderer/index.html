@@ -138,6 +138,40 @@
       <span style="margin-left:auto" id="status-bar-time">00:00</span>
     </div>
 
+    <!-- BOUTON OUTILS (bas gauche) -->
+    <div id="tools-btn" onclick="toggleToolsPanel()" style="
+      position:fixed; bottom:40px; left:20px;
+      width:44px; height:44px; border-radius:50%;
+      background:rgba(4,16,35,0.9);
+      border:1px solid rgba(0,191,255,0.3);
+      box-shadow:0 0 12px rgba(0,191,255,0.2);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; z-index:150;
+      font-size:18px;
+      transition:all 0.3s;
+    " onmouseenter="this.style.boxShadow='0 0 20px rgba(0,191,255,0.5)'"
+       onmouseleave="this.style.boxShadow='0 0 12px rgba(0,191,255,0.2)'">⚡</div>
+
+    <!-- PANNEAU D'OUTILS -->
+    <div id="tools-panel" style="
+      position:fixed; bottom:95px; left:16px;
+      width:280px;
+      background:rgba(3,12,28,0.95);
+      border:1px solid rgba(0,191,255,0.2);
+      border-radius:8px;
+      padding:12px;
+      display:none;
+      z-index:150;
+      max-height:420px;
+      overflow-y:auto;
+    ">
+      <div style="font-family:'Orbitron',monospace;font-size:9px;
+                  color:#00BFFF;letter-spacing:0.2em;margin-bottom:10px;">
+        ⚡ OUTILS DISPONIBLES
+      </div>
+      <div id="tools-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;"></div>
+    </div>
+
   </div>
 
   <script src="renderer.js"></script>

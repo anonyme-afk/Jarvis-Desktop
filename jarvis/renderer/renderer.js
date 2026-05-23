@@ -214,23 +214,45 @@ function toggleListening() {
 async function sendToJarvis(message) {
   addMessage('user', message);
   document.getElementById('status-bar-text').textContent = 'TRAITEMENT...';
-
   document.getElementById('jarvis-orb').classList.add('state-speaking');
 
   try {
-    const result = await window.jarvis.sendMessage(message);
+    // Utiliser /tool-chat : l'IA choisit elle-même ses outils
+    const r = await fetch('http://127.0.0.1:5001/tool-chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message})
+    });
+    const result = await r.json();
+
+    // Afficher l'outil utilisé si applicable
+    if (result.tool_used) {
+      addSystemMessage(`⚡ Outil utilisé : ${result.tool_used}`);
+    }
 
     addMessage('jarvis', result.reply);
-    document.getElementById('status-bar-text').textContent = 'EN ÉCOUTE';
 
-    if (result.action) {
-      handleAction(result.action);
-    }
-  } catch (err) {
-    addMessage('jarvis', 'Je rencontre une difficulté de connexion.');
+    if (result.action) handleAction(result.action);
+
+  } catch(err) {
+    addMessage('jarvis', 'Connexion au serveur impossible.');
   } finally {
     document.getElementById('jarvis-orb').classList.remove('state-speaking');
+    document.getElementById('status-bar-text').textContent = 'EN ÉCOUTE';
   }
+}
+
+// Message système (info, pas une réponse IA)
+function addSystemMessage(text) {
+  const zone = document.getElementById('chat-zone');
+  const div = document.createElement('div');
+  div.style.cssText = `
+    font-family:'Rajdhani',sans-serif; font-size:10px;
+    color:rgba(0,191,255,0.5); letter-spacing:0.1em;
+    text-align:center; padding:2px;
+  `;
+  div.textContent = text;
+  zone.appendChild(div);
 }
 
 function addMessage(role, text) {
@@ -334,3 +356,68 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyC') toggleCamera();
   if (e.code === 'KeyM') showNetworkMap();
 });
+
+// ===== PANNEAU D'OUTILS =====
+
+const TOOLS_UI = [
+  { icon: "🔍", label: "Chercher sur le web",     cmd: "JARVIS, cherche " },
+  { icon: "📰", label: "Actualités",               cmd: "JARVIS, quelles sont les dernières actualités ?" },
+  { icon: "🌤", label: "Météo",                    cmd: "JARVIS, quel temps fait-il à Paris ?" },
+  { icon: "💻", label: "Infos système",            cmd: "JARVIS, montre-moi les infos système" },
+  { icon: "🌐", label: "Vitesse internet",         cmd: "JARVIS, teste ma connexion internet" },
+  { icon: "📸", label: "Screenshot",               cmd: "JARVIS, prends un screenshot" },
+  { icon: "📋", label: "Presse-papier",            cmd: "JARVIS, lis mon presse-papier" },
+  { icon: "🧮", label: "Calculer",                 cmd: "JARVIS, calcule " },
+  { icon: "▶", label: "YouTube",                  cmd: "JARVIS, cherche sur YouTube " },
+  { icon: "📖", label: "Wikipedia",               cmd: "JARVIS, que dit Wikipedia sur " },
+  { icon: "⏰", label: "Rappel",                   cmd: "JARVIS, rappelle-moi dans 5 minutes de " },
+  { icon: "📝", label: "Créer un fichier",         cmd: "JARVIS, crée un fichier texte avec " },
+  { icon: "🖱", label: "Contrôle souris",         cmd: "JARVIS, clique au centre de l'écran" },
+  { icon: "⌨", label: "Taper du texte",           cmd: "JARVIS, tape le texte : " },
+  { icon: "📱", label: "Téléphone (Android)",      cmd: "JARVIS, montre le téléphone" },
+  { icon: "🏠", label: "Home Assistant",           cmd: "JARVIS, état de la maison" },
+];
+
+function renderToolsGrid() {
+  const grid = document.getElementById('tools-grid');
+  grid.innerHTML = '';
+  TOOLS_UI.forEach(tool => {
+    const btn = document.createElement('button');
+    btn.style.cssText = `
+      background:rgba(0,80,130,0.2);
+      border:1px solid rgba(0,191,255,0.15);
+      border-radius:4px;
+      padding:8px 6px;
+      cursor:pointer;
+      text-align:left;
+      color:#C8E4FF;
+      font-family:'Rajdhani',sans-serif;
+      font-size:11px;
+      letter-spacing:0.05em;
+      transition:all 0.2s;
+      display:flex; align-items:center; gap:6px;
+    `;
+    btn.innerHTML = `<span style="font-size:14px">${tool.icon}</span><span>${tool.label}</span>`;
+    btn.onmouseenter = () => btn.style.background = 'rgba(0,191,255,0.12)';
+    btn.onmouseleave = () => btn.style.background = 'rgba(0,80,130,0.2)';
+    btn.onclick = () => {
+      // Pré-remplir la commande ou l'exécuter directement
+      if (tool.cmd.endsWith(' ')) {
+        // La commande attend une suite → mettre dans l'input
+        const input = document.getElementById('text-input');
+        if (input) { input.value = tool.cmd; input.focus(); }
+        else sendToJarvis(tool.cmd + '...');
+      } else {
+        sendToJarvis(tool.cmd);
+      }
+      toggleToolsPanel();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function toggleToolsPanel() {
+  const panel = document.getElementById('tools-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  if (panel.style.display === 'block') renderToolsGrid();
+}

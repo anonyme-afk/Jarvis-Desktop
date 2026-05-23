@@ -50,6 +50,41 @@
       </div>
     </div>
 
+    <!-- Ajouter après le div API status -->
+    <div id="provider-selector" style="
+      position: fixed;
+      top: 60px; right: 16px;
+      background: rgba(4,16,35,0.9);
+      border: 1px solid rgba(0,191,255,0.2);
+      border-radius: 6px;
+      padding: 8px;
+      min-width: 220px;
+      display: none;
+      z-index: 200;
+    ">
+      <div style="font-family:'Orbitron',monospace;font-size:9px;color:#00BFFF;
+                  letter-spacing:0.15em;margin-bottom:8px;">
+        CHANGER DE MODÈLE IA
+      </div>
+      <div id="provider-list"></div>
+      <div style="margin-top:8px;border-top:1px solid rgba(0,191,255,0.1);padding-top:8px;">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:10px;color:#5A8FAA;
+                    letter-spacing:0.1em;margin-bottom:4px;">MODÈLES OLLAMA LOCAUX</div>
+        <div id="ollama-list"></div>
+      </div>
+    </div>
+
+    <!-- Bouton pour ouvrir/fermer le sélecteur -->
+    <div id="model-toggle-btn" onclick="toggleProviderSelector()" style="
+      position:fixed; top:16px; right:16px;
+      cursor:pointer; padding:4px 8px;
+      font-family:'Rajdhani',monospace;font-size:10px;
+      letter-spacing:0.15em; color:#00BFFF;
+      border:1px solid rgba(0,191,255,0.2);
+      border-radius:3px;
+      z-index: 210;
+    ">⚙ MODÈLE</div>
+
     <!-- ZONE CENTRALE : transcription + réponse -->
     <div id="chat-zone" style="
       position:absolute;
