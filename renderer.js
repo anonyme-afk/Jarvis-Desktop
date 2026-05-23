@@ -111,7 +111,7 @@ if (!window.jarvis) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
-        const res = await fetch('http://127.0.0.1:5001/tool-chat', {
+        const res = await fetch('/api/tool-chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message }),
@@ -586,7 +586,7 @@ async function checkApiHealth() {
   if (now - lastApiHealthCheck < 10000) return;
   lastApiHealthCheck = now;
   try {
-    const response = await fetch('http://127.0.0.1:5001/health'); // fallback web endpoint
+    const response = await fetch('/api/health'); // fallback web endpoint
     if (!response.ok) throw new Error();
     const data = await response.json();
     if (data.status === 'ok') {
@@ -608,7 +608,7 @@ let userMessageIndex = -1;
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     // Stop VAD or TTS
-    fetch('http://127.0.0.1:5001/stop-tts', { method: 'POST' }).catch(e=>{});
+    fetch('/api/stop-tts', { method: 'POST' }).catch(e=>{});
   }
   
   if (e.ctrlKey && e.key.toLowerCase() === 'l') {
@@ -668,7 +668,7 @@ window.sendToJarvis = async function(message) {
 // Charger les providers disponibles
 async function loadProviders() {
   try {
-    const r = await fetch('http://127.0.0.1:5001/providers');
+    const r = await fetch('/api/providers');
     const data = await r.json();
     renderProviderList(data.providers, data.ollama_models);
   } catch(e) {
@@ -712,7 +712,7 @@ function renderProviderList(providers, ollama_models) {
       div.style.cssText = 'padding:4px 8px;cursor:pointer;color:#C8E4FF;font-family:Rajdhani,sans-serif;font-size:11px;';
       div.textContent = `▸ ${m}`;
       div.onclick = () => {
-        fetch('http://127.0.0.1:5001/set-provider', {
+        fetch('/api/set-provider', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({provider_id:'ollama-auto'})
         });
@@ -725,7 +725,7 @@ function renderProviderList(providers, ollama_models) {
 }
 
 async function switchProvider(providerId) {
-  const r = await fetch('http://127.0.0.1:5001/set-provider', {
+  const r = await fetch('/api/set-provider', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({provider_id: providerId})
