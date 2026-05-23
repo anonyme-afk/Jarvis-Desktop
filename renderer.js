@@ -679,45 +679,104 @@ async function loadProviders() {
 function renderProviderList(providers, ollama_models) {
   const list = document.getElementById('provider-list');
   list.innerHTML = '';
+  
+  // Group providers by category
+  const grouped = {};
   providers.forEach(p => {
-    const div = document.createElement('div');
-    div.style.cssText = `
-      padding:5px 8px; margin:2px 0; cursor:pointer;
-      border-radius:3px; font-family:'Rajdhani',sans-serif;
-      font-size:11px; letter-spacing:0.08em;
-      color:${p.available ? '#C8E4FF' : '#3A5A7A'};
-      border:1px solid ${p.available ? 'rgba(0,191,255,0.15)' : 'transparent'};
-      display:flex; justify-content:space-between; align-items:center;
-    `;
-    const badge = p.free
-      ? '<span style="color:#00E676;font-size:9px">GRATUIT</span>'
-      : '<span style="color:#FFB300;font-size:9px">PAYANT</span>';
-    div.innerHTML = `<span>${p.name}</span>${p.available ? badge : '<span style="color:#555;font-size:9px">CLEF MANQUANTE</span>'}`;
-    if (p.available) {
-      div.onmouseenter = () => div.style.background = 'rgba(0,191,255,0.08)';
-      div.onmouseleave = () => div.style.background = '';
-      div.onclick = () => switchProvider(p.id);
-    }
-    list.appendChild(div);
+    const cat = p.category || "Autres";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(p);
   });
+  
+  // Iterate and render categories
+  for (const [catName, listItems] of Object.entries(grouped)) {
+    // Create header of category
+    const header = document.createElement('div');
+    header.style.cssText = `
+      font-family:'Orbitron',sans-serif;
+      font-size:10px;
+      color:#00BFFF;
+      letter-spacing:0.12em;
+      margin-top:10px;
+      margin-bottom:4px;
+      padding-bottom:2px;
+      border-bottom:1px solid rgba(0,191,255,0.15);
+      text-transform: uppercase;
+      font-weight: bold;
+    `;
+    header.textContent = catName;
+    list.appendChild(header);
+    
+    // Render providers under this category
+    listItems.forEach(p => {
+      const div = document.createElement('div');
+      div.style.cssText = `
+        padding:5px 8px; margin:2px 0; cursor:pointer;
+        border-radius:3px; font-family:'Rajdhani',sans-serif;
+        font-size:11px; letter-spacing:0.04em;
+        color:${p.available ? '#C8E4FF' : '#3A5A7A'};
+        border:1px solid ${p.available ? 'rgba(0,191,255,0.15)' : 'transparent'};
+        display:flex; justify-content:space-between; align-items:center;
+        transition: all 0.2s;
+      `;
+      const badge = p.free
+        ? '<span style="color:#00E676;font-size:8px;font-weight:bold;margin-left:5px;">GRATUIT</span>'
+        : '<span style="color:#FFB300;font-size:8px;font-weight:bold;margin-left:5px;">PAYANT</span>';
+      
+      const availLabel = p.available 
+        ? badge 
+        : '<span style="color:#FF3D00;font-size:8px;font-weight:bold;margin-left:5px;opacity:0.6;">APICLÉ REQUIS</span>';
+        
+      div.innerHTML = `<span>${p.name}</span>${availLabel}`;
+      if (p.available) {
+        div.onmouseenter = () => {
+          div.style.background = 'rgba(0,191,255,0.1)';
+          div.style.borderColor = 'rgba(0,191,255,0.4)';
+        };
+        div.onmouseleave = () => {
+          div.style.background = '';
+          div.style.borderColor = 'rgba(0,191,255,0.15)';
+        };
+        div.onclick = () => switchProvider(p.id);
+      } else {
+        div.style.cursor = 'help';
+        div.onmouseenter = () => {
+          div.style.background = 'rgba(255,61,0,0.05)';
+          div.style.borderColor = 'rgba(255,61,0,0.2)';
+        };
+        div.onmouseleave = () => {
+          div.style.background = '';
+          div.style.borderColor = 'transparent';
+        };
+        div.onclick = () => {
+          addMessage('jarvis', `Pour utiliser ${p.name}, ajoutez sa clé API native ou le connecteur universel OpenRouter en insérant "OPENROUTER_API_KEY=votre_cle" dans votre fichier .env.`);
+          toggleProviderSelector();
+        };
+      }
+      list.appendChild(div);
+    });
+  }
 
   // Modèles Ollama
   const ollamaList = document.getElementById('ollama-list');
   ollamaList.innerHTML = '';
   if (ollama_models.length === 0) {
-    ollamaList.innerHTML = '<div style="color:#3A5A7A;font-size:10px;font-family:Rajdhani">Ollama non détecté</div>';
+    ollamaList.innerHTML = '<div style="color:#3A5A7A;font-size:10px;font-family:Rajdhani">Ollama non détecté localement</div>';
   } else {
     ollama_models.forEach(m => {
       const div = document.createElement('div');
-      div.style.cssText = 'padding:4px 8px;cursor:pointer;color:#C8E4FF;font-family:Rajdhani,sans-serif;font-size:11px;';
+      div.style.cssText = 'padding:4px 8px;cursor:pointer;color:#C8E4FF;font-family:Rajdhani,sans-serif;font-size:11px;transition:all 0.2s;';
       div.textContent = `▸ ${m}`;
+      div.onmouseenter = () => div.style.color = '#00BFFF';
+      div.onmouseleave = () => div.style.color = '#C8E4FF';
       div.onclick = () => {
         fetch('/api/set-provider', {
           method:'POST', headers:{'Content-Type':'application/json'},
           body: JSON.stringify({provider_id:'ollama-auto'})
         });
-        document.getElementById('model-name').textContent = m.toUpperCase();
+        document.getElementById('model-name').textContent = m.toUpperCase().slice(0, 16);
         toggleProviderSelector();
+        addMessage('jarvis', `Modèle Ollama local sélectionné : ${m}`);
       };
       ollamaList.appendChild(div);
     });

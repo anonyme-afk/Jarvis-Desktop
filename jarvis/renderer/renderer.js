@@ -275,7 +275,7 @@ async function sendToJarvis(message) {
 
     // Afficher l'outil utilisé si applicable
     if (result.tool_used) {
-      addSystemMessage(`⚡ Outil utilisé : ${result.tool_used}`);
+      addSystemMessage(`Outil utilisé : ${result.tool_used}`);
     }
 
     addMessage('jarvis', result.reply);
@@ -408,22 +408,22 @@ window.addEventListener('keydown', (e) => {
 // ===== PANNEAU D'OUTILS =====
 
 const TOOLS_UI = [
-  { icon: "🔍", label: "Chercher sur le web",     cmd: "JARVIS, cherche " },
-  { icon: "📰", label: "Actualités",               cmd: "JARVIS, quelles sont les dernières actualités ?" },
-  { icon: "🌤", label: "Météo",                    cmd: "JARVIS, quel temps fait-il à Paris ?" },
-  { icon: "💻", label: "Infos système",            cmd: "JARVIS, montre-moi les infos système" },
-  { icon: "🌐", label: "Vitesse internet",         cmd: "JARVIS, teste ma connexion internet" },
-  { icon: "📸", label: "Screenshot",               cmd: "JARVIS, prends un screenshot" },
-  { icon: "📋", label: "Presse-papier",            cmd: "JARVIS, lis mon presse-papier" },
-  { icon: "🧮", label: "Calculer",                 cmd: "JARVIS, calcule " },
-  { icon: "▶", label: "YouTube",                  cmd: "JARVIS, cherche sur YouTube " },
-  { icon: "📖", label: "Wikipedia",               cmd: "JARVIS, que dit Wikipedia sur " },
-  { icon: "⏰", label: "Rappel",                   cmd: "JARVIS, rappelle-moi dans 5 minutes de " },
-  { icon: "📝", label: "Créer un fichier",         cmd: "JARVIS, crée un fichier texte avec " },
-  { icon: "🖱", label: "Contrôle souris",         cmd: "JARVIS, clique au centre de l'écran" },
-  { icon: "⌨", label: "Taper du texte",           cmd: "JARVIS, tape le texte : " },
-  { icon: "📱", label: "Téléphone (Android)",      cmd: "JARVIS, montre le téléphone" },
-  { icon: "🏠", label: "Home Assistant",           cmd: "JARVIS, état de la maison" },
+  { label: "Chercher sur le web",     cmd: "JARVIS, cherche " },
+  { label: "Actualités",               cmd: "JARVIS, quelles sont les dernières actualités ?" },
+  { label: "Météo",                    cmd: "JARVIS, quel temps fait-il à Paris ?" },
+  { label: "Infos système",            cmd: "JARVIS, montre-moi les infos système" },
+  { label: "Vitesse internet",         cmd: "JARVIS, teste ma connexion internet" },
+  { label: "Screenshot",               cmd: "JARVIS, prends un screenshot" },
+  { label: "Presse-papier",            cmd: "JARVIS, lis mon presse-papier" },
+  { label: "Calculer",                 cmd: "JARVIS, calcule " },
+  { label: "YouTube",                  cmd: "JARVIS, cherche sur YouTube " },
+  { label: "Wikipedia",               cmd: "JARVIS, que dit Wikipedia sur " },
+  { label: "Rappel",                   cmd: "JARVIS, rappelle-moi dans 5 minutes de " },
+  { label: "Créer un fichier",         cmd: "JARVIS, crée un fichier texte avec " },
+  { label: "Contrôle souris",         cmd: "JARVIS, clique au centre de l'écran" },
+  { label: "Taper du texte",           cmd: "JARVIS, tape le texte : " },
+  { label: "Téléphone (Android)",      cmd: "JARVIS, montre le téléphone" },
+  { label: "Home Assistant",           cmd: "JARVIS, état de la maison" },
 ];
 
 function renderToolsGrid() {
@@ -445,7 +445,7 @@ function renderToolsGrid() {
       transition:all 0.2s;
       display:flex; align-items:center; gap:6px;
     `;
-    btn.innerHTML = `<span style="font-size:14px">${tool.icon}</span><span>${tool.label}</span>`;
+    btn.innerHTML = `<span>${tool.label}</span>`;
     btn.onmouseenter = () => btn.style.background = 'rgba(0,191,255,0.12)';
     btn.onmouseleave = () => btn.style.background = 'rgba(0,80,130,0.2)';
     btn.onclick = () => {

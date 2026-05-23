@@ -13,15 +13,15 @@ WARNINGS = []
 def check(name, fn):
     try:
         result = fn()
-        status = "✅" if result else "⚠️"
+        status = "[OK]" if result else "[WARN]"
         CHECKS.append(f"{status} {name}")
         if not result:
             WARNINGS.append(name)
     except Exception as e:
-        CHECKS.append(f"❌ {name}: {e}")
+        CHECKS.append(f"[ERR] {name}: {e}")
         ERRORS.append(f"{name}: {e}")
 
-print("\n🤖 JARVIS v3.0 — Vérification complète\n" + "="*50)
+print("\n[JARVIS v3.0] — Vérification complète\n" + "="*50)
 
 # ---- PYTHON ----
 check("Python 3.10+", lambda: sys.version_info >= (3, 10))
@@ -71,9 +71,9 @@ optional_modules = {
 for mod, desc in optional_modules.items():
     try:
         __import__(mod)
-        CHECKS.append(f"  ✅ {desc}")
+        CHECKS.append(f"  [OK] {desc}")
     except ImportError:
-        CHECKS.append(f"  ⚪ {desc} (optionnel)")
+        CHECKS.append(f"  [-] {desc} (optionnel)")
 
 # ---- SERVEUR PYTHON ----
 import threading, time
@@ -92,8 +92,8 @@ try:
     check("Serveur Flask démarre et répond", lambda: server_ok)
     if server_ok:
         data = r.json()
-        CHECKS.append(f"  ✅ Provider actif: {data.get('provider','?')}")
-        CHECKS.append(f"  ✅ Backend mémoire: {data.get('services',{}).get('mem0','?')}")
+        CHECKS.append(f"  [OK] Provider actif: {data.get('provider','?')}")
+        CHECKS.append(f"  [OK] Backend mémoire: {data.get('services',{}).get('mem0','?')}")
 except Exception as e:
     check("Serveur Flask", lambda: False)
     ERRORS.append(f"Serveur: {e}")
@@ -108,16 +108,16 @@ node_modules = os.path.join(BASE, "..", "node_modules")
 check("node_modules installés", lambda: os.path.exists(node_modules))
 
 # ---- RAPPORT FINAL ----
-print("\n📋 RÉSULTATS:\n")
+print("\n[RÉSULTATS]\n")
 for c in CHECKS:
     print(f"  {c}")
 
 print(f"\n{'='*50}")
 if ERRORS:
-    print(f"\n❌ {len(ERRORS)} ERREUR(S) CRITIQUE(S):")
+    print(f"\n[ERR] {len(ERRORS)} ERREUR(S) CRITIQUE(S):")
     for e in ERRORS:
         print(f"  → {e}")
-    print("\n💡 CORRECTIONS:")
+    print("\n[CORRECTIONS]:")
     if any("flask" in e for e in ERRORS):
         print("  pip install -r python/requirements.txt")
     if any("GEMINI" in e for e in ERRORS):
@@ -126,10 +126,10 @@ if ERRORS:
     if any("node_modules" in e for e in ERRORS):
         print("  cd .. && npm install")
 else:
-    print("\n✅ TOUT EST OK — Lance JARVIS avec : npm start")
+    print("\n[SUCCESS] TOUT EST OK — Lance JARVIS avec : npm start")
 
 if WARNINGS:
-    print(f"\n⚠️ {len(WARNINGS)} avertissement(s) (modules optionnels manquants)")
+    print(f"\n[WARN] {len(WARNINGS)} avertissement(s) (modules optionnels manquants)")
     print("  pip install -r python/requirements.txt  pour tout installer")
 
 print()

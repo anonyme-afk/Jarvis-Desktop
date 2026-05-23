@@ -1,4 +1,4 @@
-# Lancement de JARVIS Desktop 🚀
+# Lancement de JARVIS Desktop
 
 ## 1. Démarrer le Cerveau (Backend Python)
 Ouvrez un **premier terminal** dans le dossier `Jarvis-Desktop` :
@@ -20,7 +20,7 @@ Ouvrez votre navigateur : **http://localhost:3000**
 
 ---
 
-### ✅ 3 Vérifications de bon fonctionnement
+### 3 Vérifications de bon fonctionnement
 1. **API Status** : En bas à gauche, vous devriez voir **[CONNECTÉ]** en vert. S'il est rouge, le terminal Python indique probablement une erreur (clé API manquante par exemple).
 2. **Microphone (Web Speech API)** : Cliquez sur **VEILLE** en haut à droite ou appuyez sur **ESPACE** pour activer l'écoute. Autorisez le micro dans le navigateur.
 3. **TTS (Voix)** : Tapez `Bonjour` dans la barre en bas et validez. JARVIS devrait vous répondre texte et voix (l'orbe pulse).
