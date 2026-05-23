@@ -95,7 +95,8 @@ const state = {
   isSpeaking: false,
   cameraActive: false,
   networkMapVisible: false,
-  recognition: null
+  recognition: null,
+  recognitionActive: false
 };
 
 // Web Preview Mock pour que ça marche dans AI Studio sans Electron
@@ -253,6 +254,26 @@ function initSpeechRecognition() {
   state.recognition.interimResults = true;
   state.recognition.lang = 'fr-FR';
 
+  state.recognition.onstart = () => {
+    state.recognitionActive = true;
+  };
+
+  state.recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    if (event.error === 'not-allowed') {
+      state.isListening = false;
+      const orb = document.getElementById('jarvis-orb');
+      const micStatus = document.getElementById('mic-status');
+      if (orb) orb.classList.remove('state-listening');
+      if (micStatus) {
+        micStatus.textContent = 'VEILLE';
+        micStatus.style.color = '';
+      }
+      const bText = document.getElementById('status-text');
+      if (bText) bText.textContent = 'ACCÈS REFUSÉ';
+    }
+  };
+
   state.recognition.onresult = (event) => {
     const last = event.results[event.results.length - 1];
     const transcript = last[0].transcript.trim();
@@ -263,7 +284,14 @@ function initSpeechRecognition() {
   };
 
   state.recognition.onend = () => {
-    if (state.isListening) state.recognition.start();
+    state.recognitionActive = false;
+    if (state.isListening) {
+      try {
+        state.recognition.start();
+      } catch (e) {
+        console.warn('SpeechRecognition auto-restart ignored:', e);
+      }
+    }
   };
 }
 
@@ -273,20 +301,37 @@ function toggleListening() {
   const micStatus = document.getElementById('mic-status');
 
   if (state.isListening) {
-    orb.classList.add('state-listening');
-    micStatus.textContent = 'ÉCOUTE';
-    micStatus.style.color = '#00FF88';
-    state.recognition?.start();
-    document.getElementById('status-text').textContent = 'EN ÉCOUTE';
+    if (orb) orb.classList.add('state-listening');
+    if (micStatus) {
+      micStatus.textContent = 'ÉCOUTE';
+      micStatus.style.color = '#00FF88';
+    }
+    const bText = document.getElementById('status-text');
+    if (bText) bText.textContent = 'EN ÉCOUTE';
+
+    if (state.recognition && !state.recognitionActive) {
+      try {
+        state.recognition.start();
+      } catch (e) {
+        console.warn('SpeechRecognition start error:', e);
+      }
+    }
   } else {
-    orb.classList.remove('state-listening');
-    micStatus.textContent = 'VEILLE';
-    micStatus.style.color = '';
-    state.recognition?.stop();
-    document.getElementById('status-text').textContent = 'EN ATTENTE';
-    
-    // Restart idle waveform
-    // initWaveform(); (commented out because the new draw() uses rAF continuously)
+    if (orb) orb.classList.remove('state-listening');
+    if (micStatus) {
+      micStatus.textContent = 'VEILLE';
+      micStatus.style.color = '';
+    }
+    const bText = document.getElementById('status-text');
+    if (bText) bText.textContent = 'EN ATTENTE';
+
+    if (state.recognition && state.recognitionActive) {
+      try {
+        state.recognition.stop();
+      } catch (e) {
+        console.warn('SpeechRecognition stop error:', e);
+      }
+    }
   }
 }
 
