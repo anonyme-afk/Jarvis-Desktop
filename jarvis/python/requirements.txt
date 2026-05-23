@@ -1,32 +1,32 @@
 # Serveur
-flask==3.0.0
-flask-cors==4.0.0
-python-dotenv==1.0.0
-requests==2.31.0
+flask>=3.0.0
+flask-cors>=4.0.0
+python-dotenv>=1.0.0
+requests>=2.31.0
 
 # Multi-API IA
-google-generativeai==0.8.0
-anthropic==0.34.0
-openai==1.40.0
-cohere==5.9.0
+google-generativeai>=0.8.0
+anthropic>=0.34.0
+openai>=1.40.0
+cohere>=5.9.0
 
 # Mémoire avancée (installer dans l'ordre)
 mem0ai
-chromadb==0.5.0
+chromadb
 
 # Recherche web
-duckduckgo-search==6.2.6
+duckduckgo-search
 
 # Vision
-opencv-python==4.8.0.74
-Pillow==10.0.0
-ultralytics==8.2.0
-mediapipe==0.10.9
+opencv-python
+Pillow
+ultralytics
+mediapipe
 face_recognition
 
 # Gaming
-pydirectinput==1.0.4
-pyautogui==0.9.54
+pydirectinput
+pyautogui
 
 # Navigation web autonome
 browser-use
@@ -34,40 +34,40 @@ playwright
 langchain-google-genai
 
 # OSINT
-python-whois==0.9.5
-dnspython==2.6.1
+python-whois
+dnspython
 
 # Audio
-SpeechRecognition==3.10.1
-pyaudio==0.2.14
-pyttsx3==2.90
-numpy==1.26.0
+SpeechRecognition
+pyaudio
+pyttsx3
+numpy
 
 # Système
-psutil==5.9.8
-pyperclip==1.8.2
+psutil
+pyperclip
 
 # Notifications
-apprise==1.8.0
+apprise
 
 # Planification
-APScheduler==3.10.4
+APScheduler
 
 # VAD
 torch
 torchaudio
 
 # NFC (optionnel, nécessite lecteur USB)
-# nfcpy==1.0.4
+# nfcpy
 
 # Hardware serial (Arduino)
-pyserial==3.5
+pyserial
 
 # Météo (sans clé via wttr.in)
 # Pas de librairie, juste requests
 
 # Vitesse internet
-speedtest-cli==2.1.3
+speedtest-cli
 
 # Vidéo/Media
-ffmpeg-python==0.2.0
+ffmpeg-python
