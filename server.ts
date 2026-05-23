@@ -36,46 +36,13 @@ async function startServer() {
   // API Chat Route
   app.post("/api/chat", async (req, res) => {
     try {
-      const { message } = req.body;
-      
-      conversationHistory.push({ role: "user", parts: [{ text: message }] });
-      if (conversationHistory.length > 20) {
-        conversationHistory.shift();
-      }
-
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("Clé API Gemini non configurée (GEMINI_API_KEY dans .env)");
-      }
-
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-pro",
-        contents: [
-            { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
-            { role: "model", parts: [{ text: "Compris. Je suis prêt." }] },
-            ...conversationHistory
-        ]
+      const response = await fetch('http://127.0.0.1:5001/tool-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body)
       });
-
-      let reply = response.text || "";
-      conversationHistory.push({ role: "model", parts: [{ text: reply }] });
-
-      let action = null;
-      if (reply.includes("{")) {
-        try {
-          const startIdx = reply.indexOf("{");
-          const endIdx = reply.lastIndexOf("}") + 1;
-          const jsonStr = reply.slice(startIdx, endIdx);
-          action = JSON.parse(jsonStr);
-          reply = reply.slice(0, startIdx).trim();
-          if (!reply) {
-            reply = "Bien sûr. J'exécute l'action.";
-          }
-        } catch (e) {
-          console.error("JSON parse error", e);
-        }
-      }
-
-      res.json({ reply, action, model_used: "gemini-1.5-pro" });
+      const data = await response.json();
+      res.json(data);
     } catch (e: any) {
       console.error(e);
       res.status(500).json({ reply: "Erreur serveur Web : " + e.message });

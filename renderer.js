@@ -105,14 +105,14 @@ if (!window.jarvis) {
   window.jarvis = {
     sendMessage: async (message) => {
       try {
-        const res = await fetch('/api/chat', {
+        const res = await fetch('http://127.0.0.1:5001/tool-chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message })
         });
         return await res.json();
       } catch (e) {
-        return { reply: "Serveur API non disponible en preview web." };
+        return { reply: "Erreur de connexion au serveur Flask." };
       }
     },
     openUrl: (url) => { window.open(url, '_blank'); },
@@ -259,7 +259,11 @@ function initSpeechRecognition() {
   };
 
   state.recognition.onerror = (event) => {
-    console.error('Speech recognition error:', event.error);
+    if (event.error === 'no-speech') {
+      // Ignore silence naturally
+      return;
+    }
+    console.warn('Speech recognition error:', event.error);
     if (event.error === 'not-allowed') {
       state.isListening = false;
       const orb = document.getElementById('jarvis-orb');
@@ -461,7 +465,7 @@ async function analyzeScreen() {
 
 async function checkApiHealth() {
   try {
-    const response = await fetch('/api/health'); // fallback web endpoint
+    const response = await fetch('http://127.0.0.1:5001/health'); // fallback web endpoint
     if (!response.ok) throw new Error();
     const data = await response.json();
     if (data.status === 'ok') {

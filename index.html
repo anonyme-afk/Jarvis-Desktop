@@ -43,6 +43,15 @@
       <div class="hud-line">
         <span class="hud-label">MODEL</span>
         <span class="hud-value" id="model-name">GEMINI / OLLAMA</span>
+        <div id="model-toggle-btn" onclick="toggleProviderSelector()" style="
+          cursor:pointer; padding:2px 6px;
+          margin-left: 10px;
+          font-family:'Rajdhani',monospace;font-size:9px;
+          letter-spacing:0.1em; color:#00BFFF;
+          border:1px solid rgba(0,191,255,0.2);
+          border-radius:3px;
+          display: inline-block;
+        ">⚙ MODÈLE</div>
       </div>
       <div class="hud-line">
         <span class="hud-label">API</span>
@@ -75,15 +84,7 @@
     </div>
 
     <!-- Bouton pour ouvrir/fermer le sélecteur -->
-    <div id="model-toggle-btn" onclick="toggleProviderSelector()" style="
-      position:fixed; top:16px; right:16px;
-      cursor:pointer; padding:4px 8px;
-      font-family:'Rajdhani',monospace;font-size:10px;
-      letter-spacing:0.15em; color:#00BFFF;
-      border:1px solid rgba(0,191,255,0.2);
-      border-radius:3px;
-      z-index: 210;
-    ">⚙ MODÈLE</div>
+    <!-- (Le bouton est maintenant dans le panel hud top-right) -->
 
     <!-- ZONE CENTRALE : transcription + réponse -->
     <div id="chat-zone" style="
