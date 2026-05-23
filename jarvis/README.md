@@ -4,6 +4,9 @@ Assistant IA holographique style Iron Man.
 Vision, OSINT, Gaming, NFC, Mémoire, Domotique, Navigation web autonome.
 Fonctionne sur Windows, Mac et Linux. Même les vieux PC.
 
+**Lien du site preview (GitHub) :** [https://github.com/anonyme-afk/Jarvis-Desktop](https://github.com/anonyme-afk/Jarvis-Desktop)
+**Aperçu Web AI Studio :** [https://ais-pre-hzhw3abu2vanfcaj65gfij-114166625783.europe-west2.run.app](https://ais-pre-hzhw3abu2vanfcaj65gfij-114166625783.europe-west2.run.app)
+
 ## Ce que JARVIS peut faire
 
 ### IA & Recherche

@@ -1,6 +1,11 @@
 {
-  "name": "Jarvis Desktop V2",
-  "description": "An advanced Electron-based desktop AI assistant inspired by Iron Man's JARVIS, featuring a V2 holographic UI, voice interaction, and dual Gemini/Ollama backend.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "JARVIS Desktop v3",
+  "description": "Assistant IA holographique style Iron Man. Vision, OSINT, Gaming, NFC, Mémoire, Domotique. Projet : https://github.com/anonyme-afk/Jarvis-Desktop",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
