@@ -18,9 +18,9 @@ PROVIDERS = {
         "free": True,
         "vision": True,
     },
-    "gemini-1.5-flash": {
-        "name": "Gemini 1.5 Flash (Gratuit)",
-        "model": "gemini-1.5-flash",
+    "gemini-3.5-flash": {
+        "name": "Gemini 3.5 Flash (Gratuit)",
+        "model": "gemini-3.5-flash",
         "type": "gemini",
         "env_key": "GEMINI_API_KEY",
         "or_model": "google/gemini-flash-1.5",
@@ -28,9 +28,9 @@ PROVIDERS = {
         "free": True,
         "vision": True,
     },
-    "gemini-1.5-pro": {
-        "name": "Gemini 1.5 Pro",
-        "model": "gemini-1.5-pro",
+    "gemini-3.1-pro": {
+        "name": "Gemini 3.1 Pro",
+        "model": "gemini-3.1-pro-preview",
         "type": "gemini",
         "env_key": "GEMINI_API_KEY",
         "or_model": "google/gemini-pro-1.5",
@@ -351,11 +351,11 @@ class AIProvider:
                 result = self._chat_gemini(messages, image_b64)
         except Exception as e:
             print(f"[Provider] Erreur {ptype}: {e}")
-            # Fallback automatique sur gemini-1.5-flash
+            # Fallback automatique sur gemini-3.5-flash
             try:
-                print("[Provider] Fallback sur gemini-1.5-flash...")
+                print("[Provider] Fallback sur gemini-3.5-flash...")
                 old = self.provider_id
-                self.set_provider('gemini-1.5-flash')
+                self.set_provider('gemini-3.5-flash')
                 result = self._chat_gemini(messages, image_b64)
                 self.set_provider(old)
             except Exception as e2:
@@ -375,12 +375,12 @@ class AIProvider:
             return "Configure ta clé GEMINI_API_KEY dans .env (gratuit sur aistudio.google.com)"
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        # Utilise toujours gemini-1.5-flash comme fallback sûr
-        model_name = self.current.get('model', 'gemini-1.5-flash')
+        # Utilise toujours gemini-3.5-flash comme fallback sûr
+        model_name = self.current.get('model', 'gemini-3.5-flash')
         try:
             model = genai.GenerativeModel(model_name)
         except Exception:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-3.5-flash')
 
         parts = [SYSTEM_PROMPT]
         for m in messages:
@@ -391,9 +391,9 @@ class AIProvider:
             r = model.generate_content(parts)
             return r.text
         except Exception as e:
-            # Si le modèle n'existe pas, retry avec gemini-1.5-flash
+            # Si le modèle n'existe pas, retry avec gemini-3.5-flash
             if 'not found' in str(e).lower() or '404' in str(e):
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-3.5-flash')
                 r = model.generate_content(parts)
                 return r.text
             raise

@@ -46,18 +46,17 @@ Puis ouvre **http://localhost:3000**
 |---|---|
 | **ESPACE** | Activer/désactiver le micro |
 | **C** | Activer/désactiver la caméra |
-| **N** | Carte réseau |
 | **ECHAP** | Couper JARVIS |
 | **MODÈLE** (haut droite) | Changer de modèle IA |
 | **CMD** (bas gauche) | Panneau d'outils |
 
 ---
 
-## 🧠 Modèles IA supportés
+## Modèles IA supportés
 
 **Gratuits (aucune carte bancaire) :**
-- Gemini 2.0 Flash ← **Défaut recommandé**
-- Gemini 1.5 Flash
+- Gemini 3.5 Flash ← **Défaut recommandé**
+- Gemini 3.1 Pro
 - Groq Llama 4 Scout (ultra-rapide)
 - Groq Llama 3.3 70B
 - OpenRouter : Llama 4, DeepSeek R1, Qwen VL (via clé OpenRouter)

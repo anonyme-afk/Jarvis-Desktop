@@ -273,9 +273,18 @@ async function sendToJarvis(message) {
     });
     const result = await r.json();
 
-    // Afficher l'outil utilisé si applicable
-    if (result.tool_used) {
-      addSystemMessage(`Outil utilisé : ${result.tool_used}`);
+    // Afficher l'outil ou le mode utilisé
+    let modeText = '';
+    if (result.mode_used === 'web_search') modeText = '🔍 Recherche Web';
+    if (result.mode_used === 'deep_think') modeText = '🧠 Réflexion Profonde';
+    if (result.mode_used === 'vision') modeText = '👁 Analyse Visuelle';
+    if (result.mode_used === 'browser') modeText = '🌐 Navigateur';
+    if (result.mode_used === 'quick') modeText = '⚡ Action Rapide';
+
+    if (modeText) {
+      addSystemMessage(`Mode : ${modeText}`);
+    } else if (result.tool_used) {
+      addSystemMessage(`Outil : ${result.tool_used}`);
     }
 
     addMessage('jarvis', result.reply);

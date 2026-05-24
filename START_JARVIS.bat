@@ -26,6 +26,7 @@ python -c "import flask" 2>nul
 if errorlevel 1 (
     echo [2/3] Installation des dependances Python...
     pip install -r jarvis\python\requirements.txt
+    playwright install chromium
     if errorlevel 1 (
         echo ERREUR lors de l installation des dependances.
         pause

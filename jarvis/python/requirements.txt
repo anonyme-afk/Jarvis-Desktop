@@ -1,0 +1,6 @@
+playwright
+browser-use
+flask
+flask-cors
+requests
+opencv-python

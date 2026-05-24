@@ -35,10 +35,10 @@ async function startServer() {
       const data = await response.json();
       res.json({
         status: data.status,
-        model: data.provider || "GEMINI-1.5-FLASH"
+        model: data.provider || "GEMINI-3.5-FLASH"
       });
     } catch (e) {
-      res.json({ status: "ok", model: "GEMINI-1.5-PRO (WEB FALLBACK)" });
+      res.json({ status: "ok", model: "GEMINI-3.5-FLASH (WEB FALLBACK)" });
     }
   });
 
@@ -51,7 +51,7 @@ async function startServer() {
     } catch (e) {
       res.json({
         providers: [
-          { name: "Gemini 1.5 Flash (Gratuit)", id: "gemini" },
+          { name: "Gemini 3.5 Flash (Gratuit)", id: "gemini" },
           { name: "Ollama (Local Offline)", id: "ollama-auto" }
         ],
         ollama_models: ["llama3", "mistral"]
@@ -106,7 +106,7 @@ async function startServer() {
         }
         
         const response = await ai.models.generateContent({
-          model: 'gemini-1.5-flash',
+          model: 'gemini-3.5-flash',
           contents: [
             { role: 'user', parts: [{ text: SYSTEM_PROMPT + "\n\nMessage de l'utilisateur: " + message }] }
           ],

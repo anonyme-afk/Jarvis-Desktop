@@ -1,804 +1,663 @@
-class NetworkMap {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.nodes = [];
-    this.connections = [];
-    this.animFrame = null;
-    this.lastDrawTime = 0;
-    this.generateNodes(80);
-    this.generateConnections();
-  }
+/* ═══════════════════════════════════════════
+   JARVIS DESKTOP v4 — renderer.js
+   Architecture : Module pattern + Event-driven
+═══════════════════════════════════════════ */
 
-  generateNodes(count) {
-    for (let i = 0; i < count; i++) {
-      this.nodes.push({
-        x: Math.random() * this.canvas.width,
-        y: Math.random() * this.canvas.height,
-        radius: Math.random() * 2.5 + 0.5,
-        pulsePhase: Math.random() * Math.PI * 2,
-        isHub: Math.random() < 0.1
-      });
-    }
-  }
-
-  generateConnections() {
-    this.nodes.forEach((node, i) => {
-      const distances = this.nodes
-        .map((other, j) => ({
-          j,
-          dist: Math.hypot(other.x - node.x, other.y - node.y)
-        }))
-        .filter(d => d.j !== i && d.dist < 180)
-        .sort((a, b) => a.dist - b.dist)
-        .slice(0, 3);
-
-      distances.forEach(d => {
-        if (!this.connections.find(c =>
-          (c.a === i && c.b === d.j) || (c.a === d.j && c.b === i)
-        )) {
-          this.connections.push({
-            a: i, b: d.j,
-            opacity: Math.random() * 0.3 + 0.05
-          });
-        }
-      });
-    });
-  }
-
-  draw(timestamp) {
-    this.animFrame = requestAnimationFrame(ts => this.draw(ts));
-    
-    if (timestamp - this.lastDrawTime < 33) return;
-    this.lastDrawTime = timestamp;
-
-    const { ctx, canvas, nodes, connections } = this;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    connections.forEach(conn => {
-      const a = nodes[conn.a];
-      const b = nodes[conn.b];
-      const gradient = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-      gradient.addColorStop(0, `rgba(0, 96, 128, ${conn.opacity})`);
-      gradient.addColorStop(0.5, `rgba(0, 160, 200, ${conn.opacity * 1.5})`);
-      gradient.addColorStop(1, `rgba(0, 96, 128, ${conn.opacity})`);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = gradient;
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-    });
-
-    nodes.forEach(node => {
-      const pulse = Math.sin(timestamp * 0.002 + node.pulsePhase) * 0.5 + 0.5;
-      const r = node.isHub ? node.radius * 2.5 : node.radius;
-      const alpha = node.isHub ? 0.7 + pulse * 0.3 : 0.3 + pulse * 0.3;
-      const color = node.isHub ? `rgba(0, 255, 136, ${alpha})` : `rgba(0, 191, 255, ${alpha})`;
-
-      if (node.isHub) {
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, r * 4, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0, 255, 136, ${0.03 * pulse})`;
-        ctx.fill();
-      }
-
-      ctx.beginPath();
-      ctx.arc(node.x, node.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    });
-  }
-
-  start() { requestAnimationFrame(ts => this.draw(ts)); }
-  stop()  { cancelAnimationFrame(this.animFrame); }
-}
-
-const state = {
-  isListening: false,
-  isSpeaking: false,
+// ── STATE ─────────────────────────────────
+const S = {
+  listening: false,
+  speaking: false,
   cameraActive: false,
-  networkMapVisible: false,
+  networkActive: false,
   recognition: null,
-  recognitionActive: false
+  recognitionLock: false,
+  currentMode: 'normal',
+  latencyStart: 0,
+  reconnectTimer: null,
+  apiOnline: false,
+  lastMessages: [],
 };
 
-// Web Preview Mock pour que ça marche dans AI Studio sans Electron
-if (!window.jarvis) {
-  console.log("Running in Web Preview. Using local API fallback.");
-  window.jarvis = {
-    sendMessage: async (message) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
-        const res = await fetch('/api/tool-chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        if (!res.body) return await res.json();
-        
-        // Return a special object that tells the caller it's a stream
-        return { isStream: true, reader: res.body.getReader() };
-      } catch (e) {
-        if (e.name === 'AbortError') return { reply: "Délai d'attente dépassé (15s)." };
-        return { reply: "Erreur de connexion au serveur Flask." };
-      }
-    },
-    openUrl: (url) => { window.open(url, '_blank'); },
-    onJarvisResponse: () => {},
-    onTranscription: () => {},
-    onPythonLog: () => {}
-  };
-}
-
+// ── BOOT SEQUENCE ─────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
-  initClock();
-  initWaveform();
-  initNetworkMap();
-  initSpeechRecognition();
-  checkApiHealth();
-  setInterval(checkApiHealth, 10000);
-
-  // Add click handler to mic status panel for fallback activation
-  const micStatus = document.getElementById('mic-status');
-  if (micStatus && micStatus.parentElement) {
-    micStatus.parentElement.style.cursor = 'pointer';
-    micStatus.parentElement.addEventListener('click', toggleListening);
-  }
-
-  setTimeout(() => {
-    document.getElementById('jarvis-orb').className = 'orb-corner-mode';
-    addMessage('jarvis', 'Système en ligne. En attente d\'instructions.');
-  }, 2000);
+  bootSequence();
 });
 
+async function bootSequence() {
+  const fill = document.getElementById('boot-fill');
+  const screen = document.getElementById('boot-screen');
+
+  // Animate progress bar
+  let pct = 0;
+  const interval = setInterval(() => {
+    pct = Math.min(pct + Math.random() * 8 + 2, 95);
+    if (fill) fill.style.width = pct + '%';
+  }, 80);
+
+  // Init everything
+  initClock();
+  initWaveform();
+  initSpeechRecognition();
+  initKeyboard();
+  initTools();
+  await checkApiHealth();
+
+  // Move orb to corner after 1.8s
+  setTimeout(() => {
+    const orb = document.getElementById('jarvis-orb');
+    if (orb) orb.classList.remove('mode-center');
+  }, 1800);
+
+  // Finish boot
+  setTimeout(() => {
+    clearInterval(interval);
+    if (fill) fill.style.width = '100%';
+    setTimeout(() => {
+      screen.classList.add('hidden');
+      setTimeout(() => screen.remove(), 900);
+    }, 300);
+  }, 2200);
+
+  // Periodic health check
+  setInterval(checkApiHealth, 12000);
+}
+
+// ── CLOCK ─────────────────────────────────
 function initClock() {
   function tick() {
     const now = new Date();
-    const time = now.toLocaleTimeString('fr-FR', {hour12: false});
-    document.getElementById('sys-time').textContent = time;
-    document.getElementById('status-time').textContent =
-      now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    const t = now.toLocaleTimeString('fr-FR', { hour12: false });
+    const t2 = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const el = document.getElementById('sys-time');
+    if (el) el.textContent = t;
+    document.getElementById('status-time').textContent = t2;
   }
   tick();
   setInterval(tick, 1000);
 }
 
+// ── WAVEFORM ──────────────────────────────
 function initWaveform() {
   const canvas = document.getElementById('waveform-canvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  canvas.width  = 500;
-  canvas.height = 55;
-
+  canvas.width = 460;
+  canvas.height = 52;
   let analyser = null;
-  let dataArray = null;
-  let idlePhase = 0;
+  let idle = 0;
 
-  // Connecter le micro si dispo
   navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     .then(stream => {
-      const audioCtx = new AudioContext();
-      const source   = audioCtx.createMediaStreamSource(stream);
-      analyser        = audioCtx.createAnalyser();
+      const ac = new AudioContext();
+      const src = ac.createMediaStreamSource(stream);
+      analyser = ac.createAnalyser();
       analyser.fftSize = 128;
-      source.connect(analyser);
-      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      src.connect(analyser);
     })
-    .catch(() => {}); // pas de micro → mode idle
+    .catch(() => {});
 
-  let lastDrawTime = 0;
-  function draw(time) {
+  function draw() {
     requestAnimationFrame(draw);
-    if (document.hidden) return;
-    
-    // limit to ~30 FPS
-    if (time - lastDrawTime < 33) return;
-    lastDrawTime = time;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const bars   = 64;
-    const barW   = canvas.width / bars - 1;
-    const cy     = canvas.height / 2;
+    const bars = 58;
+    const bw = canvas.width / bars - 1;
+    const cy = canvas.height / 2;
 
     for (let i = 0; i < bars; i++) {
-      let amplitude;
-
-      if (analyser && dataArray) {
-        analyser.getByteFrequencyData(dataArray);
-        amplitude = dataArray[i] / 255;
+      let amp;
+      if (analyser && S.listening) {
+        const d = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(d);
+        amp = d[i] / 255;
       } else {
-        // Animation idle organique
-        amplitude = (
-          Math.sin(idlePhase + i * 0.28) * 0.3 +
-          Math.sin(idlePhase * 1.7 + i * 0.15) * 0.15 +
-          0.06
-        );
-        amplitude = Math.max(0.03, amplitude);
+        amp = (Math.sin(idle + i * 0.25) * 0.5 + 0.5) * 0.12 + 0.02;
       }
-
-      const h = amplitude * (canvas.height * 0.82);
-
-      // Couleur : cyan quand bas, blanc pur quand haut
-      const brightness = Math.floor(amplitude * 255);
-      const r = brightness;
-      const g = 191 + Math.floor(amplitude * 64);
-      const b = 255;
-      const alpha = 0.25 + amplitude * 0.75;
-
-      // Barre symétrique (vers le haut ET vers le bas depuis le centre)
-      ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
-      ctx.fillRect(i * (barW + 1), cy - h / 2, barW, h);
-
-      // Reflet en dessous (opacité réduite de moitié)
-      ctx.fillStyle = `rgba(${r},${g},${b},${alpha * 0.3})`;
-      ctx.fillRect(i * (barW + 1), cy + h / 2, barW, h * 0.4);
+      const h = Math.max(2, amp * canvas.height * 0.85);
+      const alpha = 0.25 + amp * 0.75;
+      ctx.fillStyle = `rgba(${Math.floor(amp*120)},${180+Math.floor(amp*75)},255,${alpha})`;
+      ctx.fillRect(i * (bw + 1), cy - h / 2, bw, h);
     }
-
-    idlePhase += 0.022;
+    idle += 0.025;
   }
-
-  requestAnimationFrame(draw);
+  draw();
 }
 
-function initNetworkMap() {
-  const canvas = document.getElementById('network-canvas');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  window.networkMap = new NetworkMap(canvas);
-}
+// ── NETWORK MAP ───────────────────────────
+function showNetworkMap() {}
+function hideNetworkMap() {}
 
-function showNetworkMap() {
-  document.getElementById('network-canvas').style.opacity = '0.6';
-  window.networkMap.start();
-  state.networkMapVisible = true;
-}
-
-function hideNetworkMap() {
-  document.getElementById('network-canvas').style.opacity = '0';
-  window.networkMap.stop();
-  state.networkMapVisible = false;
-}
-
+// ── SPEECH RECOGNITION ───────────────────
 function initSpeechRecognition() {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    console.warn('SpeechRecognition non disponible');
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    console.warn('[JARVIS] SpeechRecognition non disponible sur ce navigateur');
     return;
   }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  state.recognition = new SR();
-  state.recognition.continuous = true;
-  state.recognition.interimResults = true;
-  state.recognition.lang = 'fr-FR';
+  S.recognition = new SR();
+  S.recognition.continuous = true;
+  S.recognition.interimResults = true;
+  S.recognition.lang = 'fr-FR';
 
-  state.recognition.onstart = () => {
-    state.recognitionActive = true;
-  };
-
-  state.recognition.onerror = (event) => {
-    if (event.error === 'no-speech') {
-      // Ignore silence naturally
-      return;
-    }
-    if (event.error === 'network') {
-      const bText = document.getElementById('status-text');
-      if (bText) bText.textContent = 'RECONNEXION...';
-      return;
-    }
-    console.warn('Speech recognition error:', event.error);
-    if (event.error === 'not-allowed') {
-      state.isListening = false;
-      const orb = document.getElementById('jarvis-orb');
-      const micStatus = document.getElementById('mic-status');
-      if (orb) orb.classList.remove('state-listening');
-      if (micStatus) {
-        micStatus.textContent = 'VEILLE';
-        micStatus.style.color = '';
-      }
-      const bText = document.getElementById('status-text');
-      if (bText) bText.textContent = 'Autorise le micro dans ton navigateur';
+  S.recognition.onstart = () => { S.recognitionLock = true; };
+  S.recognition.onend = () => {
+    S.recognitionLock = false;
+    if (S.listening) {
+      setTimeout(() => {
+        if (S.listening && !S.recognitionLock) safeStart();
+      }, 300);
     }
   };
-
-  let typingTimeout = null;
-
-  state.recognition.onresult = (event) => {
-    const last = event.results[event.results.length - 1];
-    const transcript = last[0].transcript.trim();
-    
-    // Afficher en temps réel
-    document.getElementById('input-text').value = transcript;
-
-    if (last.isFinal && transcript.length >= 2) {
-      if (typingTimeout) clearTimeout(typingTimeout);
-      typingTimeout = setTimeout(() => {
-        document.getElementById('input-text').value = '';
-        if (window.sendToJarvis) window.sendToJarvis(transcript);
-        else sendToJarvis(transcript);
-      }, 500);
+  S.recognition.onerror = (e) => {
+    S.recognitionLock = false;
+    if (['no-speech', 'audio-capture'].includes(e.error)) return; // silencieux
+    if (e.error === 'not-allowed') {
+      addSystemMsg('⚠ Microphone non autorisé — Paramètres → Confidentialité → Microphone');
+      stopListening();
     }
   };
-
-  state.recognition.onend = () => {
-    state.recognitionActive = false;
-    if (state.isListening) {
-      try {
-        state.recognitionActive = true;
-        state.recognition.start();
-      } catch (e) {
-        state.recognitionActive = false;
-        console.warn('SpeechRecognition auto-restart ignored:', e);
-      }
+  S.recognition.onresult = (e) => {
+    const last = e.results[e.results.length - 1];
+    if (last.isFinal) {
+      const text = last[0].transcript.trim();
+      if (text.length > 1) sendToJarvis(text);
     }
   };
+}
+
+function safeStart() {
+  if (!S.recognition || S.recognitionLock) return;
+  try { S.recognition.start(); } catch(e) {}
+}
+
+function startListening() {
+  S.listening = true;
+  safeStart();
+  setMicStatus(true);
+}
+
+function stopListening() {
+  S.listening = false;
+  if (S.recognition && S.recognitionLock) {
+    try { S.recognition.stop(); } catch(e) {}
+  }
+  setMicStatus(false);
 }
 
 function toggleListening() {
-  state.isListening = !state.isListening;
-  const orb = document.getElementById('jarvis-orb');
-  const micStatus = document.getElementById('mic-status');
+  if (S.listening) stopListening(); else startListening();
+}
 
-  if (state.isListening) {
-    if (orb) orb.classList.add('state-listening');
-    if (micStatus) {
-      micStatus.textContent = 'ÉCOUTE';
-      micStatus.style.color = '#00FF88';
-    }
-    const bText = document.getElementById('status-text');
-    if (bText) bText.textContent = 'EN ÉCOUTE';
-
-    if (state.recognition && !state.recognitionActive) {
-      try {
-        state.recognitionActive = true;
-        state.recognition.start();
-      } catch (e) {
-        state.recognitionActive = false;
-        console.warn('SpeechRecognition start error:', e);
-      }
-    }
+function setMicStatus(on) {
+  const el = document.getElementById('mic-status');
+  const dot = document.getElementById('status-dot');
+  if (!el) return;
+  if (on) {
+    el.textContent = 'ÉCOUTE';
+    el.style.color = 'var(--green)';
+    el.style.textShadow = '0 0 8px rgba(0,255,136,0.6)';
+    document.getElementById('jarvis-orb').classList.add('state-listening');
+    if (dot) dot.className = 'dot dot-online';
+    document.getElementById('status-text').textContent = 'EN ÉCOUTE';
   } else {
-    if (orb) orb.classList.remove('state-listening');
-    if (micStatus) {
-      micStatus.textContent = 'VEILLE';
-      micStatus.style.color = '';
-    }
-    const bText = document.getElementById('status-text');
-    if (bText) bText.textContent = 'EN ATTENTE';
-
-    if (state.recognition && state.recognitionActive) {
-      try {
-        state.recognitionActive = false;
-        state.recognition.stop();
-      } catch (e) {
-        state.recognitionActive = true;
-        console.warn('SpeechRecognition stop error:', e);
-      }
-    }
+    el.textContent = 'VEILLE';
+    el.style.color = '';
+    el.style.textShadow = '';
+    document.getElementById('jarvis-orb').classList.remove('state-listening');
+    if (dot) dot.className = S.apiOnline ? 'dot dot-online' : 'dot dot-offline';
+    document.getElementById('status-text').textContent = 'EN ATTENTE';
   }
 }
 
+// ── SEND TO JARVIS ────────────────────────
 async function sendToJarvis(message) {
-  addMessage('user', message);
-  document.getElementById('status-text').textContent = 'TRAITEMENT...';
+  if (!message.trim()) return;
+  S.lastMessages.push(message);
+  if (S.lastMessages.length > 20) S.lastMessages.shift();
 
-  document.getElementById('jarvis-orb').classList.add('state-speaking');
+  addUserMsg(message);
+  setThinkingState(true);
+  S.latencyStart = Date.now();
 
   try {
-    const result = await window.jarvis.sendMessage(message);
+    const res = await fetchWithTimeout('/api/tool-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    }, 18000);
 
-    if (result.isStream) {
-      const zone = document.getElementById('chat-zone');
-      const div = document.createElement('div');
-      div.className = 'msg-jarvis';
-      div.classList.add('typing-cursor');
-      zone.appendChild(div);
-      while (zone.childElementCount > 5) {
-        zone.firstChild.remove();
-      }
-      zone.scrollTop = zone.scrollHeight;
+    const data = await res.json();
+    const latency = Date.now() - S.latencyStart;
+    document.getElementById('latency-display').textContent = latency + 'ms';
 
-      const reader = result.reader;
-      const decoder = new TextDecoder();
-      let streamAction = null;
-      let buffer = '';
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, {stream: true});
-        const lines = buffer.split('\n');
-        buffer = lines.pop(); // keep the last potentially incomplete line in buffer
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const parsed = JSON.parse(line);
-            if (parsed.type === 'chunk') {
-              div.textContent += parsed.text;
-              zone.scrollTop = zone.scrollHeight;
-            } else if (parsed.type === 'done') {
-              if (parsed.action) streamAction = parsed.action;
-              if (parsed.tool_used) showToolIndicator(parsed.tool_used);
-            }
-          } catch (e) {}
-        }
-      }
-      div.classList.remove('typing-cursor');
-      document.getElementById('status-text').textContent = 'EN ÉCOUTE';
+    setThinkingState(false);
+    addJarvisMsg(data.reply || 'Pas de réponse.', data.mode_used || 'normal');
 
-      setTimeout(() => {
-        div.style.transition = 'opacity 1s';
-        div.style.opacity = '0';
-        setTimeout(() => div.remove(), 1000);
-      }, 30000);
+    if (data.action) handleAction(data.action);
+    if (data.mode_used) updateModeDisplay(data.mode_used);
 
-      if (streamAction) {
-        handleAction(streamAction);
-      }
-    } else {
-      addMessage('jarvis', result.reply);
-      document.getElementById('status-text').textContent = 'EN ÉCOUTE';
-
-      if (result.action) {
-        handleAction(result.action);
-      }
-      if (result.tool_used) {
-        showToolIndicator(result.tool_used);
-      }
-    }
   } catch (err) {
-    addMessage('jarvis', 'Je rencontre une difficulté de connexion.');
-  } finally {
-    document.getElementById('jarvis-orb').classList.remove('state-speaking');
+    setThinkingState(false);
+    addJarvisMsg('Serveur non disponible. Lance START_JARVIS.bat et vérifie que server.py tourne.', 'error');
+    checkApiHealth();
   }
 }
 
-function addMessage(role, text) {
+function fetchWithTimeout(url, opts, timeout) {
+  return Promise.race([
+    fetch(url, opts),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout))
+  ]);
+}
+
+// ── MESSAGES ─────────────────────────────
+function addUserMsg(text) {
   const zone = document.getElementById('chat-zone');
   const div = document.createElement('div');
-  div.className = role === 'user' ? 'msg-user' : 'msg-jarvis';
+  div.className = 'msg msg-user';
+  div.innerHTML = `<div class="msg-label">VOUS</div><div class="msg-bubble">${escHtml(text)}</div>`;
+  zone.appendChild(div);
+  scrollChat();
+  scheduleAutoRemove(div, 45000);
+}
 
-  if (role === 'jarvis') {
-    div.classList.add('typing-cursor');
-    zone.appendChild(div);
-    let i = 0;
-    const interval = setInterval(() => {
-      div.textContent = text.slice(0, ++i);
-      zone.scrollTop = zone.scrollHeight;
-      if (i >= text.length) {
-        div.classList.remove('typing-cursor');
-        clearInterval(interval);
-      }
-    }, 18);
+function addJarvisMsg(text, mode = 'normal') {
+  const zone = document.getElementById('chat-zone');
+  const div = document.createElement('div');
+  div.className = 'msg msg-jarvis';
+
+  const modeBadge = getModeHtml(mode);
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble typing-cursor';
+
+  div.innerHTML = `<div class="msg-label">JARVIS</div>${modeBadge}`;
+  div.appendChild(bubble);
+  zone.appendChild(div);
+  if (window.lucide) window.lucide.createIcons();
+  scrollChat();
+
+  // Typing effect
+  let i = 0;
+  const clean = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const tid = setInterval(() => {
+    bubble.innerHTML = clean.slice(0, ++i);
+    scrollChat();
+    if (i >= clean.length) {
+      bubble.classList.remove('typing-cursor');
+      clearInterval(tid);
+    }
+  }, 14);
+
+  scheduleAutoRemove(div, 60000);
+}
+
+function addSystemMsg(text) {
+  const zone = document.getElementById('chat-zone');
+  const div = document.createElement('div');
+  div.className = 'msg-system';
+  div.textContent = text;
+  zone.appendChild(div);
+  scrollChat();
+  setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity 1s'; setTimeout(() => div.remove(), 1000); }, 6000);
+}
+
+function addThinkingIndicator() {
+  removeThinkingIndicator();
+  const zone = document.getElementById('chat-zone');
+  const div = document.createElement('div');
+  div.id = 'thinking-indicator';
+  div.className = 'msg msg-jarvis';
+  div.innerHTML = `<div class="msg-label">JARVIS</div>
+    <div class="msg-bubble">
+      <div class="thinking-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>`;
+  zone.appendChild(div);
+  scrollChat();
+}
+
+function removeThinkingIndicator() {
+  const el = document.getElementById('thinking-indicator');
+  if (el) el.remove();
+}
+
+function setThinkingState(on) {
+  const orb = document.getElementById('jarvis-orb');
+  if (on) {
+    orb.classList.add('state-thinking');
+    orb.classList.remove('state-speaking');
+    addThinkingIndicator();
+    document.getElementById('status-text').textContent = 'TRAITEMENT...';
+    document.getElementById('status-dot').className = 'dot dot-pending';
   } else {
-    div.textContent = text;
-    zone.appendChild(div);
+    orb.classList.remove('state-thinking');
+    orb.classList.add('state-speaking');
+    removeThinkingIndicator();
+    setTimeout(() => {
+      orb.classList.remove('state-speaking');
+      document.getElementById('status-text').textContent = S.listening ? 'EN ÉCOUTE' : 'EN ATTENTE';
+      document.getElementById('status-dot').className = S.apiOnline ? 'dot dot-online' : 'dot dot-offline';
+    }, 3000);
   }
+}
 
-  while (zone.childElementCount > 5) {
-    zone.firstChild.remove();
-  }
+function getModeHtml(mode) {
+  const map = {
+    web_search: ['<i data-lucide="search" width="10" height="10" style="display:inline-block;vertical-align:middle;margin-right:3px;"></i> RECHERCHE WEB', 'mode-web'],
+    deep_think:  ['<i data-lucide="brain" width="10" height="10" style="display:inline-block;vertical-align:middle;margin-right:3px;"></i> RÉFLEXION', 'mode-deep'],
+    vision:      ['<i data-lucide="eye" width="10" height="10" style="display:inline-block;vertical-align:middle;margin-right:3px;"></i> VISION', 'mode-vision'],
+    browser:     ['<i data-lucide="globe" width="10" height="10" style="display:inline-block;vertical-align:middle;margin-right:3px;"></i> NAVIGATION', 'mode-browser'],
+    quick:       ['<i data-lucide="zap" width="10" height="10" style="display:inline-block;vertical-align:middle;margin-right:3px;"></i> RAPIDE', 'mode-quick'],
+  };
+  if (!map[mode]) return '';
+  const [label, cls] = map[mode];
+  return `<span class="msg-mode ${cls}">${label}</span>`;
+}
 
-  zone.scrollTop = zone.scrollHeight;
+function updateModeDisplay(mode) {
+  S.currentMode = mode;
+  const labels = {
+    web_search: '🔍 WEB', deep_think: '🧠 DEEP',
+    vision: '👁 VISION', browser: '🌐 BROWSER', quick: '⚡ QUICK', normal: '—',
+  };
+  document.getElementById('mode-display').textContent = labels[mode] || '—';
+}
 
+function scrollChat() {
+  const z = document.getElementById('chat-zone');
+  z.scrollTop = z.scrollHeight;
+}
+
+function scheduleAutoRemove(el, delay) {
   setTimeout(() => {
-    div.style.transition = 'opacity 1s';
-    div.style.opacity = '0';
-    setTimeout(() => div.remove(), 1000);
-  }, 30000);
+    el.style.transition = 'opacity 1.2s';
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 1200);
+  }, delay);
 }
 
-function showToolIndicator(tool) {
-  let indicator = document.getElementById('tool-indicator');
-  if (!indicator) {
-    indicator = document.createElement('div');
-    indicator.id = 'tool-indicator';
-    indicator.style.cssText = `
-      position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
-      background: rgba(0, 191, 255, 0.15); border: 1px solid #00BFFF;
-      color: #00BFFF; padding: 4px 10px; border-radius: 4px;
-      font-family: 'Orbitron', sans-serif; font-size: 10px; letter-spacing: 0.1em;
-      transition: opacity 0.5s; opacity: 0; z-index: 1000;
-    `;
-    document.body.appendChild(indicator);
-  }
-  indicator.textContent = `OUTIL: ${tool.toUpperCase()}`;
-  indicator.style.opacity = '1';
-  setTimeout(() => indicator.style.opacity = '0', 2000);
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ── ACTIONS ───────────────────────────────
 function handleAction(action) {
-  switch (action.type || action.action) {
-    case 'open_url':
-      window.jarvis.openUrl(action.url);
-      showNetworkMap();
-      setTimeout(hideNetworkMap, 5000);
-      break;
-    case 'show_map':
-      showNetworkMap();
-      setTimeout(hideNetworkMap, 8000);
-      break;
-    case 'system':
-      if (action.command === 'camera') {
-        toggleCamera();
-      } else if (action.command === 'screen') {
-        analyzeScreen();
-      }
-      break;
+  if (!action) return;
+  const type = action.type || action.action;
+  if (type === 'open_url' && action.url) {
+    window.open(action.url, '_blank');
+    showNetworkMap();
+    setTimeout(hideNetworkMap, 7000);
+  } else if (type === 'show_map') {
+    showNetworkMap();
+    setTimeout(hideNetworkMap, 10000);
+  } else if (type === 'system') {
+    if (action.command === 'camera') toggleCamera();
+    if (action.command === 'screen') captureScreen();
   }
 }
 
-async function toggleCamera() {
-  const feed = document.getElementById('camera-feed');
-  const video = document.getElementById('camera-video');
-  const camStatus = document.getElementById('cam-status');
-
-  if (!state.cameraActive) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      video.srcObject = stream;
-      feed.style.opacity = '1';
-      state.cameraActive = true;
-      camStatus.textContent = 'ACTIF';
-      camStatus.style.color = '#00FF88';
-    } catch (e) {
-      addMessage('jarvis', 'Accès à la caméra refusé.');
-    }
-  } else {
-    video.srcObject?.getTracks().forEach(t => t.stop());
-    feed.style.opacity = '0';
-    state.cameraActive = false;
-    camStatus.textContent = 'OFF';
-    camStatus.style.color = '';
-  }
-}
-
-async function analyzeScreen() {
-  document.getElementById('jarvis-orb').classList.add('state-listening');
-  addMessage('jarvis', 'Analyse de l\'écran en cours...');
-  
-  if (window.jarvis && window.jarvis.analyzeScreen) {
-    try {
-      const result = await window.jarvis.analyzeScreen();
-      addMessage('jarvis', result.reply);
-    } catch (e) {
-      console.error(e);
-      addMessage('jarvis', 'Erreur d\'accès à l\'écran.');
-    }
-  } else {
-    // Web Fallback
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: false });
-      addMessage('jarvis', 'Aperçu acquis (Mode Web : analyse sommaire)');
-      setTimeout(() => stream.getTracks().forEach(t => t.stop()), 1000);
-    } catch(err) {
-      addMessage('jarvis', 'Capture annulée ou refusée.');
-    }
-  }
-  document.getElementById('jarvis-orb').classList.remove('state-listening');
-}
-
-let lastApiHealthCheck = 0;
+// ── API HEALTH ────────────────────────────
 async function checkApiHealth() {
-  const now = Date.now();
-  if (now - lastApiHealthCheck < 10000) return;
-  lastApiHealthCheck = now;
+  const el = document.getElementById('api-status');
+  const dot = document.getElementById('status-dot');
   try {
-    const response = await fetch('/api/health'); // fallback web endpoint
-    if (!response.ok) throw new Error();
-    const data = await response.json();
-    if (data.status === 'ok') {
-      document.getElementById('api-status').textContent = 'CONNECTÉ';
-      document.getElementById('api-status').className = 'hud-value status-ok';
-      if (data.model) {
-        document.getElementById('model-name').textContent = String(data.model).toUpperCase();
-      }
+    const r = await fetchWithTimeout('/api/health', {}, 4000);
+    const d = await r.json();
+    S.apiOnline = true;
+    if (el) {
+      el.innerHTML = '<span class="dot dot-online"></span>CONNECTÉ';
+      el.className = 'hud-val status-ok';
     }
+    if (d.model) {
+      const name = (d.model || '').toUpperCase().split('(')[0].trim().slice(0, 18);
+      document.getElementById('model-name').textContent = name;
+    }
+    if (dot && !S.listening) dot.className = 'dot dot-online';
+    document.getElementById('status-text').textContent = 'EN ATTENTE';
+    loadProviders();
   } catch {
-    document.getElementById('api-status').textContent = 'HORS LIGNE';
-    document.getElementById('api-status').style.color = '#FF4040';
+    S.apiOnline = false;
+    if (el) {
+      el.innerHTML = '<span class="dot dot-offline"></span>HORS LIGNE';
+      el.className = 'hud-val status-err';
+    }
+    if (dot) dot.className = 'dot dot-offline';
+    document.getElementById('status-text').textContent = 'FLASK NON DÉMARRÉ';
   }
 }
 
-let userMessageHistory = [];
-let userMessageIndex = -1;
-
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    // Stop VAD or TTS
-    fetch('/api/stop-tts', { method: 'POST' }).catch(e=>{});
-  }
-  
-  if (e.ctrlKey && e.key.toLowerCase() === 'l') {
-    e.preventDefault();
-    document.getElementById('chat-zone').innerHTML = '';
-  }
-
-  if (e.key === 'ArrowUp' && document.activeElement.id === 'input-text') {
-    e.preventDefault();
-    if (userMessageHistory.length > 0) {
-      if (userMessageIndex < userMessageHistory.length - 1) userMessageIndex++;
-      document.activeElement.value = userMessageHistory[userMessageIndex];
-    }
-  }
-
-  if (e.key === 'ArrowDown' && document.activeElement.id === 'input-text') {
-    e.preventDefault();
-    if (userMessageIndex > 0) {
-      userMessageIndex--;
-      document.activeElement.value = userMessageHistory[userMessageIndex];
-    } else {
-      userMessageIndex = -1;
-      document.activeElement.value = '';
-    }
-  }
-
-  if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
-    const val = e.target.value.trim();
-    if (val) {
-      userMessageHistory.unshift(val);
-      if (userMessageHistory.length > 50) userMessageHistory.pop();
-      userMessageIndex = -1;
-      e.target.value = '';
-      if (window.sendToJarvis) window.sendToJarvis(val);
-      else sendToJarvis(val);
-    }
-  }
-
-  if ((e.code === 'Space' || e.key === ' ') && !e.target.matches('input, textarea, [contenteditable]')) {
-    e.preventDefault();
-    toggleListening();
-  }
-  if (e.code === 'KeyC') toggleCamera();
-  if (e.code === 'KeyM') showNetworkMap();
-  if (e.code === 'KeyS') analyzeScreen();
-});
-
-// Déclencher la carte réseau à chaque réponse de JARVIS
-const originalSendToJarvis = sendToJarvis;
-window.sendToJarvis = async function(message) {
-  showNetworkMap();
-  await originalSendToJarvis(message);
-  // Masquer après 8 secondes
-  setTimeout(hideNetworkMap, 8000);
-};
-
-// Charger les providers disponibles
+// ── PROVIDERS ─────────────────────────────
 async function loadProviders() {
   try {
-    const r = await fetch('/api/providers');
-    const data = await r.json();
-    renderProviderList(data.providers, data.ollama_models);
-  } catch(e) {
-    console.warn("Could not load providers", e);
-  }
+    const r = await fetchWithTimeout('/api/providers', {}, 5000);
+    const d = await r.json();
+    renderProviders(d.providers || [], d.ollama_models || [], d.current);
+  } catch {}
 }
 
-function renderProviderList(providers, ollama_models) {
+function renderProviders(providers, ollama, current) {
   const list = document.getElementById('provider-list');
-  list.innerHTML = '';
-  
-  // Group providers by category
-  const grouped = {};
+  // Group by category
+  const groups = {};
   providers.forEach(p => {
-    const cat = p.category || "Autres";
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(p);
+    const cat = p.category || 'Autre';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(p);
   });
-  
-  // Iterate and render categories
-  for (const [catName, listItems] of Object.entries(grouped)) {
-    // Create header of category
-    const header = document.createElement('div');
-    header.style.cssText = `
-      font-family:'Orbitron',sans-serif;
-      font-size:10px;
-      color:#00BFFF;
-      letter-spacing:0.12em;
-      margin-top:10px;
-      margin-bottom:4px;
-      padding-bottom:2px;
-      border-bottom:1px solid rgba(0,191,255,0.15);
-      text-transform: uppercase;
-      font-weight: bold;
-    `;
-    header.textContent = catName;
-    list.appendChild(header);
-    
-    // Render providers under this category
-    listItems.forEach(p => {
-      const div = document.createElement('div');
-      div.style.cssText = `
-        padding:5px 8px; margin:2px 0; cursor:pointer;
-        border-radius:3px; font-family:'Rajdhani',sans-serif;
-        font-size:11px; letter-spacing:0.04em;
-        color:${p.available ? '#C8E4FF' : '#3A5A7A'};
-        border:1px solid ${p.available ? 'rgba(0,191,255,0.15)' : 'transparent'};
-        display:flex; justify-content:space-between; align-items:center;
-        transition: all 0.2s;
-      `;
+  list.innerHTML = '';
+  Object.entries(groups).forEach(([cat, items]) => {
+    const title = document.createElement('div');
+    title.className = 'provider-section-title';
+    title.textContent = cat;
+    list.appendChild(title);
+    items.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'provider-item' +
+        (p.id === current ? ' active' : '') +
+        (!p.available ? ' unavailable' : '');
       const badge = p.free
-        ? '<span style="color:#00E676;font-size:8px;font-weight:bold;margin-left:5px;">GRATUIT</span>'
-        : '<span style="color:#FFB300;font-size:8px;font-weight:bold;margin-left:5px;">PAYANT</span>';
-      
-      const availLabel = p.available 
-        ? badge 
-        : '<span style="color:#FF3D00;font-size:8px;font-weight:bold;margin-left:5px;opacity:0.6;">APICLÉ REQUIS</span>';
-        
-      div.innerHTML = `<span>${p.name}</span>${availLabel}`;
+        ? '<span class="provider-badge badge-free">GRATUIT</span>'
+        : '<span class="provider-badge badge-paid">PAYANT</span>';
+      el.innerHTML = `<span>${p.name}</span>${p.available ? badge : '<span style="font-size:8px;color:var(--muted)">CLÉ MANQUANTE</span>'}`;
       if (p.available) {
-        div.onmouseenter = () => {
-          div.style.background = 'rgba(0,191,255,0.1)';
-          div.style.borderColor = 'rgba(0,191,255,0.4)';
-        };
-        div.onmouseleave = () => {
-          div.style.background = '';
-          div.style.borderColor = 'rgba(0,191,255,0.15)';
-        };
-        div.onclick = () => switchProvider(p.id);
-      } else {
-        div.style.cursor = 'help';
-        div.onmouseenter = () => {
-          div.style.background = 'rgba(255,61,0,0.05)';
-          div.style.borderColor = 'rgba(255,61,0,0.2)';
-        };
-        div.onmouseleave = () => {
-          div.style.background = '';
-          div.style.borderColor = 'transparent';
-        };
-        div.onclick = () => {
-          addMessage('jarvis', `Pour utiliser ${p.name}, ajoutez sa clé API native ou le connecteur universel OpenRouter en insérant "OPENROUTER_API_KEY=votre_cle" dans votre fichier .env.`);
-          toggleProviderSelector();
-        };
+        el.onclick = () => switchProvider(p.id);
       }
-      list.appendChild(div);
+      list.appendChild(el);
     });
-  }
+  });
 
-  // Modèles Ollama
   const ollamaList = document.getElementById('ollama-list');
-  ollamaList.innerHTML = '';
-  if (ollama_models.length === 0) {
-    ollamaList.innerHTML = '<div style="color:#3A5A7A;font-size:10px;font-family:Rajdhani">Ollama non détecté localement</div>';
+  if (ollama.length === 0) {
+    ollamaList.innerHTML = '<span class="provider-none">Ollama non détecté — installer sur ollama.com</span>';
   } else {
-    ollama_models.forEach(m => {
-      const div = document.createElement('div');
-      div.style.cssText = 'padding:4px 8px;cursor:pointer;color:#C8E4FF;font-family:Rajdhani,sans-serif;font-size:11px;transition:all 0.2s;';
-      div.textContent = `▸ ${m}`;
-      div.onmouseenter = () => div.style.color = '#00BFFF';
-      div.onmouseleave = () => div.style.color = '#C8E4FF';
-      div.onclick = () => {
+    ollamaList.innerHTML = '';
+    ollama.forEach(m => {
+      const el = document.createElement('div');
+      el.className = 'provider-item';
+      el.innerHTML = `<span>▸ ${m}</span><span class="provider-badge badge-local">LOCAL</span>`;
+      el.onclick = () => {
         fetch('/api/set-provider', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({provider_id:'ollama-auto'})
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider_id: 'ollama-auto' })
         });
-        document.getElementById('model-name').textContent = m.toUpperCase().slice(0, 16);
+        document.getElementById('model-name').textContent = m.toUpperCase().slice(0,16);
         toggleProviderSelector();
-        addMessage('jarvis', `Modèle Ollama local sélectionné : ${m}`);
       };
-      ollamaList.appendChild(div);
+      ollamaList.appendChild(el);
     });
   }
 }
 
-async function switchProvider(providerId) {
-  const r = await fetch('/api/set-provider', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({provider_id: providerId})
-  });
-  const data = await r.json();
-  document.getElementById('model-name').textContent = data.provider.toUpperCase().slice(0,16);
-  toggleProviderSelector();
-  addMessage('jarvis', `Modèle changé : ${data.provider}`);
+async function switchProvider(id) {
+  try {
+    const r = await fetch('/api/set-provider', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider_id: id })
+    });
+    const d = await r.json();
+    document.getElementById('model-name').textContent = (d.provider || '').toUpperCase().slice(0,18);
+    addSystemMsg(`✓ Modèle : ${d.provider}`);
+    toggleProviderSelector();
+    loadProviders();
+  } catch {}
 }
 
 function toggleProviderSelector() {
   const sel = document.getElementById('provider-selector');
-  sel.style.display = sel.style.display === 'none' ? 'block' : 'none';
+  const isOpen = sel.style.display === 'block';
+  sel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) loadProviders();
 }
 
-// Appeler au démarrage
-loadProviders();
+// ── CAMERA ────────────────────────────────
+async function toggleCamera() {
+  const feed = document.getElementById('camera-feed');
+  const video = document.getElementById('camera-video');
+  const status = document.getElementById('cam-status');
+  if (!S.cameraActive) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      video.srcObject = stream;
+      feed.style.opacity = '1';
+      S.cameraActive = true;
+      status.textContent = 'ACTIF';
+      status.style.color = 'var(--green)';
+    } catch {
+      addSystemMsg('⚠ Accès caméra refusé — vérifie les permissions Windows');
+    }
+  } else {
+    video.srcObject?.getTracks().forEach(t => t.stop());
+    video.srcObject = null;
+    feed.style.opacity = '0';
+    S.cameraActive = false;
+    status.textContent = 'OFF';
+    status.style.color = '';
+  }
+}
+
+// ── SCREEN CAPTURE ───────────────────────
+async function captureScreen() {
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { cursor: 'always' }, audio: false
+    });
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    await video.play();
+    const c = document.createElement('canvas');
+    c.width = video.videoWidth; c.height = video.videoHeight;
+    c.getContext('2d').drawImage(video, 0, 0);
+    stream.getTracks().forEach(t => t.stop());
+    const b64 = c.toDataURL('image/jpeg', 0.7).split(',')[1];
+    const r = await fetch('/api/vision', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: "Décris précisément cet écran", frame_b64: b64 })
+    });
+    const d = await r.json();
+    addJarvisMsg(d.reply || 'Analyse impossible.', 'vision');
+  } catch (e) {
+    addSystemMsg('⚠ Capture écran annulée');
+  }
+}
+
+// ── TOOLS PANEL ───────────────────────────
+const TOOLS = [
+  { icon: 'search', label: 'Recherche web',    cmd: 'JARVIS, cherche ' },
+  { icon: 'cloud-sun', label: 'Météo',            cmd: 'JARVIS, quel temps à Paris ?' },
+  { icon: 'cpu', label: 'Infos système',    cmd: 'JARVIS, montre les infos système' },
+  { icon: 'wifi', label: 'Vitesse internet', cmd: 'JARVIS, teste ma connexion' },
+  { icon: 'camera', label: 'Screenshot',       cmd: 'JARVIS, prends un screenshot' },
+  { icon: 'calculator', label: 'Calculer',         cmd: 'JARVIS, calcule ' },
+  { icon: 'youtube',  label: 'YouTube',          cmd: 'JARVIS, cherche sur YouTube ' },
+  { icon: 'book', label: 'Wikipedia',        cmd: 'JARVIS, infos Wikipedia sur ' },
+  { icon: 'clock', label: 'Rappel',           cmd: 'JARVIS, rappelle-moi dans 5 min de ' },
+  { icon: 'eye', label: 'Voir caméra',      cmd: null, fn: () => { toggleToolsPanel(); sendToJarvis("JARVIS, qu'est-ce que tu vois ?"); } },
+  { icon: 'map', label: 'Carte monde',     cmd: null, fn: () => { toggleToolsPanel(); showNetworkMap(); setTimeout(hideNetworkMap, 8000); } },
+  { icon: 'smartphone', label: 'Téléphone',        cmd: 'JARVIS, montre mon téléphone Android' },
+];
+
+function initTools() {
+  const grid = document.getElementById('tools-grid');
+  TOOLS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tool-btn';
+    btn.innerHTML = `<span class="tool-icon"><i data-lucide="${t.icon}" width="14" height="14"></i></span>${t.label}`;
+    btn.onclick = () => {
+      if (t.fn) { t.fn(); return; }
+      if (t.cmd) {
+        const input = document.getElementById('text-input');
+        if (t.cmd.endsWith(' ')) {
+          input.value = t.cmd;
+          input.focus();
+        } else {
+          sendToJarvis(t.cmd);
+        }
+        toggleToolsPanel();
+      }
+    };
+    grid.appendChild(btn);
+  });
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function toggleToolsPanel() {
+  const p = document.getElementById('tools-panel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+}
+
+// ── KEYBOARD ──────────────────────────────
+function initKeyboard() {
+  window.addEventListener('keydown', (e) => {
+    // Ne pas déclencher si on tape dans l'input
+    if (document.activeElement === document.getElementById('text-input')) {
+      if (e.key === 'Enter') handleInputSend();
+      return;
+    }
+    switch (e.code) {
+      case 'Space':
+        e.preventDefault();
+        toggleListening();
+        break;
+      case 'KeyC':
+        toggleCamera();
+        break;
+      case 'Escape':
+        fetch('/api/stop-tts', { method: 'POST' }).catch(() => {});
+        stopListening();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        if (S.lastMessages.length > 0) {
+          const input = document.getElementById('text-input');
+          input.value = S.lastMessages[S.lastMessages.length - 1];
+          input.focus();
+        }
+        break;
+    }
+  });
+
+  // Input hover
+  const row = document.getElementById('input-row');
+  document.addEventListener('mousemove', (e) => {
+    const bottom = window.innerHeight - 90;
+    const inZone = e.clientY > bottom;
+    row.style.opacity = inZone ? '1' : '0';
+  });
+}
+
+function handleInputSend() {
+  const input = document.getElementById('text-input');
+  const val = input.value.trim();
+  if (val) {
+    input.value = '';
+    sendToJarvis(val);
+  }
+}
+
+// Exposition globale pour les boutons HTML onclick
+window.toggleProviderSelector = toggleProviderSelector;
+window.toggleToolsPanel = toggleToolsPanel;
+window.toggleCamera = toggleCamera;
+window.handleInputSend = handleInputSend;
+window.sendToJarvis = sendToJarvis;
