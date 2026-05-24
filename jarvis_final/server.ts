@@ -87,21 +87,6 @@ async function startServer() {
     }
   });
 
-  // Browser Toggle
-  app.post("/api/browser/toggle", async (req, res) => {
-    try {
-      const response = await fetch('http://127.0.0.1:5001/browser/toggle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(req.body)
-      });
-      const data = await response.json();
-      res.json(data);
-    } catch (e) {
-      res.json({ success: false, error: "Serveur local inactif" });
-    }
-  });
-
   // API Tool Chat Route with Gemini Failover
   app.post("/api/tool-chat", async (req, res) => {
     const message = req.body.message || "";

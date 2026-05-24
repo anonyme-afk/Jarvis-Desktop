@@ -1,0 +1,31 @@
+# Clés API et secrets — NE JAMAIS COMMIT
+.env
+*.key
+
+# Dépendances
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+env/
+
+# Build Electron
+dist/
+build/
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp

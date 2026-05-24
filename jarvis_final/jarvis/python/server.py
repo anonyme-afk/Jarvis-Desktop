@@ -254,7 +254,7 @@ Message: {message}
         elif tool_name == 'analyze_game_state':
             result = {"summary": gaming.analyze_game_state(ai)}
         elif tool_name == 'browser_task':
-            result = {"summary": browser_agent.run_task("gemini", params.get('task',''))}
+            result = {"summary": browser_agent.run_task(params.get('task',''))}
         else:
             result = executor.execute(tool_name, params)
 
@@ -345,16 +345,9 @@ def gaming_analyze():
 @app.route('/browser/task', methods=['POST'])
 def browser_task():
     task = request.json.get('task','')
-    # Par défaut, on va vers gemini
-    result = browser_agent.run_task("gemini", task)
+    result = browser_agent.run_task(task)
     speak(result)
     return jsonify({"reply": result})
-
-@app.route('/browser/toggle', methods=['POST'])
-def browser_toggle():
-    visible = request.json.get('visible', False)
-    res = browser_agent.toggle_view(visible)
-    return jsonify(res)
 
 if __name__ == '__main__':
     saved_provider = memory.get_preference('provider')

@@ -16,7 +16,6 @@ const S = {
   reconnectTimer: null,
   apiOnline: false,
   lastMessages: [],
-  browserVisible: false,
 };
 
 // ── BOOT SEQUENCE ─────────────────────────
@@ -244,7 +243,7 @@ function initSpeechRecognition() {
     S.recognitionLock = false;
     if (['no-speech', 'audio-capture'].includes(e.error)) return; // silencieux
     if (e.error === 'not-allowed') {
-      addSystemMsg('Microphone non autorisé — Paramètres → Confidentialité → Microphone');
+      addSystemMsg(' Microphone non autorisé — Paramètres → Confidentialité → Microphone');
       stopListening();
     }
   };
@@ -435,11 +434,11 @@ function setThinkingState(on) {
 
 function getModeHtml(mode) {
   const map = {
-    web_search: ['⌕ RECHERCHE WEB', 'mode-web'],
-    deep_think:  ['⬡ RÉFLEXION', 'mode-deep'],
-    vision:      ['◎ VISION', 'mode-vision'],
-    browser:     ['⊞ NAVIGATION', 'mode-browser'],
-    quick:       ['⇋ RAPIDE', 'mode-quick'],
+    web_search: [' RECHERCHE WEB', 'mode-web'],
+    deep_think:  [' RÉFLEXION', 'mode-deep'],
+    vision:      [' VISION', 'mode-vision'],
+    browser:     [' NAVIGATION', 'mode-browser'],
+    quick:       [' RAPIDE', 'mode-quick'],
   };
   if (!map[mode]) return '';
   const [label, cls] = map[mode];
@@ -449,8 +448,8 @@ function getModeHtml(mode) {
 function updateModeDisplay(mode) {
   S.currentMode = mode;
   const labels = {
-    web_search: '⌕ WEB', deep_think: '⬡ DEEP',
-    vision: '◎ VISION', browser: '⊞ BROWSER', quick: '⇋ QUICK', normal: '—',
+    web_search: ' WEB', deep_think: ' DEEP',
+    vision: ' VISION', browser: ' BROWSER', quick: ' QUICK', normal: '—',
   };
   document.getElementById('mode-display').textContent = labels[mode] || '—';
 }
@@ -616,7 +615,7 @@ async function toggleCamera() {
       status.textContent = 'ACTIF';
       status.style.color = 'var(--green)';
     } catch {
-      addSystemMsg('Accès caméra refusé — vérifie les permissions Windows');
+      addSystemMsg(' Accès caméra refusé — vérifie les permissions Windows');
     }
   } else {
     video.srcObject?.getTracks().forEach(t => t.stop());
@@ -649,24 +648,24 @@ async function captureScreen() {
     const d = await r.json();
     addJarvisMsg(d.reply || 'Analyse impossible.', 'vision');
   } catch (e) {
-    addSystemMsg('Capture écran annulée');
+    addSystemMsg(' Capture écran annulée');
   }
 }
 
 // ── TOOLS PANEL ───────────────────────────
 const TOOLS = [
-  { icon: '⌕', label: 'Recherche web',    cmd: 'JARVIS, cherche ' },
-  { icon: '☼', label: 'Météo',            cmd: 'JARVIS, quel temps à Paris ?' },
-  { icon: '⏣', label: 'Infos système',    cmd: 'JARVIS, montre les infos système' },
-  { icon: '⇋', label: 'Vitesse internet', cmd: 'JARVIS, teste ma connexion' },
-  { icon: '⛶', label: 'Screenshot',       cmd: 'JARVIS, prends un screenshot' },
-  { icon: '∑', label: 'Calculer',         cmd: 'JARVIS, calcule ' },
-  { icon: '▶', label: 'YouTube',          cmd: 'JARVIS, cherche sur YouTube ' },
-  { icon: 'W', label: 'Wikipedia',        cmd: 'JARVIS, infos Wikipedia sur ' },
-  { icon: '⧖', label: 'Rappel',           cmd: 'JARVIS, rappelle-moi dans 5 min de ' },
-  { icon: '◎', label: 'Voir caméra',      cmd: null, fn: () => { toggleToolsPanel(); sendToJarvis("JARVIS, qu'est-ce que tu vois ?"); } },
-  { icon: '▧', label: 'Carte monde',     cmd: null, fn: () => { toggleToolsPanel(); showNetworkMap(); setTimeout(hideNetworkMap, 8000); } },
-  { icon: '⌗', label: 'Téléphone',        cmd: 'JARVIS, montre mon téléphone Android' },
+  { icon: '', label: 'Recherche web',    cmd: 'JARVIS, cherche ' },
+  { icon: '', label: 'Météo',            cmd: 'JARVIS, quel temps à Paris ?' },
+  { icon: '', label: 'Infos système',    cmd: 'JARVIS, montre les infos système' },
+  { icon: '', label: 'Vitesse internet', cmd: 'JARVIS, teste ma connexion' },
+  { icon: '', label: 'Screenshot',       cmd: 'JARVIS, prends un screenshot' },
+  { icon: '', label: 'Calculer',         cmd: 'JARVIS, calcule ' },
+  { icon: '',  label: 'YouTube',          cmd: 'JARVIS, cherche sur YouTube ' },
+  { icon: '', label: 'Wikipedia',        cmd: 'JARVIS, infos Wikipedia sur ' },
+  { icon: '', label: 'Rappel',           cmd: 'JARVIS, rappelle-moi dans 5 min de ' },
+  { icon: '', label: 'Voir caméra',      cmd: null, fn: () => { toggleToolsPanel(); sendToJarvis("JARVIS, qu'est-ce que tu vois ?"); } },
+  { icon: '', label: 'Carte monde',     cmd: null, fn: () => { toggleToolsPanel(); showNetworkMap(); setTimeout(hideNetworkMap, 8000); } },
+  { icon: '', label: 'Téléphone',        cmd: 'JARVIS, montre mon téléphone Android' },
 ];
 
 function initTools() {
@@ -755,32 +754,3 @@ window.toggleToolsPanel = toggleToolsPanel;
 window.toggleCamera = toggleCamera;
 window.handleInputSend = handleInputSend;
 window.sendToJarvis = sendToJarvis;
-window.toggleBrowserView = toggleBrowserView;
-
-async function toggleBrowserView() {
-  S.browserVisible = !S.browserVisible;
-  const btn = document.getElementById('browser-toggle');
-  
-  try {
-    const r = await fetch('/api/browser/toggle', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visible: S.browserVisible })
-    });
-    const data = await r.json();
-    if (data.success) {
-      if (!data.headless) {
-        btn.innerHTML = 'HIDE';
-        btn.style.color = 'var(--accent)';
-        btn.style.borderColor = 'var(--accent)';
-      } else {
-        btn.innerHTML = 'VIEW';
-        btn.style.color = 'var(--cyan)';
-        btn.style.borderColor = 'var(--cyan)';
-      }
-      addSystemMsg(`✓ Navigateur ${data.headless ? 'masqué' : 'visible'}`);
-    }
-  } catch (err) {
-    addSystemMsg('Erreur lors du toggle du navigateur');
-  }
-}

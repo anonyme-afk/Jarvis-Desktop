@@ -1,0 +1,11 @@
+{
+  "name": "JARVIS Desktop v3",
+  "description": "Assistant IA holographique style Iron Man. Vision, OSINT, Gaming, NFC, Mémoire, Domotique. Projet : https://github.com/anonyme-afk/Jarvis-Desktop",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

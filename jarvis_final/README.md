@@ -108,22 +108,7 @@ Si vous souhaitez cloner le projet au même endroit pour bidouiller le code, cop
 
 ---
 
-##  6. Mode Navigateur Autonome (Gratuit & Illimité)
-
-JARVIS intègre un mode d'automatisation de navigateur (via Playwright) qui lui permet d'utiliser l'interface web de modèles comme Gemini ou ChatGPT **à votre place, avec votre propre compte**, sans avoir besoin d'utiliser (ni de payer) une clé API. 
-
-**Principe** :
-1. Une instance invisible de Google Chrome se lance en arrière-plan, connectée à votre profil local habituel.
-2. Lorsqu'il a besoin de faire une tâche complexe (ou si vous n'avez pas de clé API), JARVIS se rend de lui-même sur `gemini.google.com`.
-3. Il tape le prompt pour vous, attend la réponse, la lit, puis vous la restitue à l'oral sur le HUD.
-
-**Comment l'utiliser & l'installer** :
-- **Installation** : JARVIS a besoin des navigateurs Playwright. Si l'installation ne s'est pas faite seule, exécutez la commande `python -m playwright install` (ou `venv\Scripts\python -m playwright install` sous Windows) depuis la racine.
-- **HUD (View Mode)** : Pour voir ce que JARVIS fait ou s'il est bloqué, cliquez sur le bouton **VIEW** dans l'interface (en haut à droite à côté des raccourcis). Chrome sortira de l'ombre et vous pourrez le voir taper en direct ou le masquer "HIDE".
-
----
-
-##  7. Dépannage rapide
+##  6. Dépannage rapide
 
 - **JARVIS ne répond pas ou HUD inactif** : Assurez-vous que le terminal hébergeant le processus Python (Flask) n'a pas crashé, et que `server.py` ou `START_JARVIS` tournent bien.
 - **Erreur de Modèle / API limit** : Vérifiez que votre `.env` contient la ligne `GEMINI_API_KEY=` suivie d'une clé correcte et valide.

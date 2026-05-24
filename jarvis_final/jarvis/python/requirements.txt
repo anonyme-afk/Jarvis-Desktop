@@ -17,4 +17,3 @@ pyperclip
 speedtest-cli
 wikipedia-api
 pyserial
-playwright
