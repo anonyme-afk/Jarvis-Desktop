@@ -34,12 +34,32 @@ class BrowserAgent:
             if not os.path.exists(user_data):
                 user_data = os.path.expanduser(r"~/.config/google-chrome") # fallback linux
             
-            self.browser = await self.playwright.chromium.launch_persistent_context(
-                user_data_dir=user_data,
-                headless=self.headless,
-                channel="chrome",
-                args=["--disable-blink-features=AutomationControlled"]
-            )
+            print(f"[BrowserAgent] Attempting to launch Chrome with primary user profile: {user_data}")
+            try:
+                self.browser = await self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=user_data,
+                    headless=self.headless,
+                    channel="chrome",
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+                print("[BrowserAgent] Chrome launched successfully with primary profile.")
+            except Exception as primary_err:
+                print(f"[BrowserAgent] Primary profile locked or failed (Chrome is likely open). Error: {primary_err}")
+                
+                # Graceful fallback to dedicated JARVIS profile to avoid lockups and run concurrently with standard Chrome
+                fallback_dir = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data JARVIS")
+                if not os.path.exists(fallback_dir) and os.name != "nt":
+                    fallback_dir = os.path.expanduser(r"~/.config/google-chrome-jarvis")
+                
+                print(f"[BrowserAgent] Launching fallback profile directory: {fallback_dir}")
+                self.browser = await self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=fallback_dir,
+                    headless=self.headless,
+                    channel="chrome",
+                    args=["--disable-blink-features=AutomationControlled"]
+                )
+                print("[BrowserAgent] Chrome activated successfully with fallback JARVIS profile.")
+
             self.page = self.browser.pages[0] if self.browser.pages else await self.browser.new_page()
             self.available = True
         except Exception as e:
