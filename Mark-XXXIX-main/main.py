@@ -379,12 +379,21 @@ TOOL_DECLARATIONS = [
   },
   {
     "name": "run_code",
-    "description": "Exécuter du code Python, JavaScript, Bash directement.",
+    "description": "Exécuter du code Python, JavaScript, Bash directement. À utiliser COMME FALLBACK si un outil n'existe pas.",
     "parameters": {"type":"object","properties":{
       "language": {"type":"string","enum":["python","javascript","bash","powershell"]},
       "code": {"type":"string"},
       "safe_mode": {"type":"boolean","default":True}
     },"required":["language","code"]}
+  },
+  {
+    "name": "database_query",
+    "description": "Exécuter une requête SQL sur une base de données MySQL, PostgreSQL ou SQLite.",
+    "parameters": {"type":"object","properties":{
+      "db_type": {"type":"string","enum":["sqlite","mysql","postgresql"]},
+      "connection_string": {"type":"string"},
+      "query": {"type":"string"}
+    },"required":["db_type", "query"]}
   }
 ]
 
@@ -821,9 +830,103 @@ class JarvisLive:
                     result = page.summary[0:1500] if page.exists() else "Not found."
                 except Exception as e: result = str(e)
 
+            elif name == "manage_files":
+                import shutil, os
+                action = args.get("action")
+                path = args.get("path")
+                try:
+                    if action == "read":
+                        with open(path, "r", encoding="utf-8") as f: result = f.read()
+                    elif action == "write": 
+                        with open(path, "w", encoding="utf-8") as f: f.write(args.get("content", ""))
+                        result = f"File {path} written."
+                    elif action == "delete":
+                        os.remove(path)
+                        result = "File deleted."
+                    elif action == "move":
+                        shutil.move(path, args.get("destination"))
+                        result = "Moved."
+                    elif action == "copy":
+                        shutil.copy(path, args.get("destination"))
+                        result = "Copied."
+                    elif action == "list":
+                        result = str(os.listdir(path if path else "."))
+                    elif action == "exists":
+                        result = str(os.path.exists(path))
+                    else: result = f"Unknown manage_files action {action}"
+                except Exception as e: result = str(e)
+
+            elif name == "control_mouse_keyboard":
+                try:
+                    import pyautogui
+                    action = args.get("action")
+                    if action == "click": pyautogui.click(args.get("x"), args.get("y"))
+                    elif action == "double_click": pyautogui.doubleClick(args.get("x"), args.get("y"))
+                    elif action == "right_click": pyautogui.rightClick(args.get("x"), args.get("y"))
+                    elif action == "move": pyautogui.moveTo(args.get("x"), args.get("y"))
+                    elif action == "type": pyautogui.write(args.get("text", ""))
+                    elif action == "hotkey":
+                        keys = args.get("keys", [])
+                        if keys: pyautogui.hotkey(*keys)
+                    elif action == "scroll": pyautogui.scroll(args.get("y", -100))
+                    result = "Input executed successfully."
+                except ImportError:
+                    result = "pyautogui is not installed. Use pip install pyautogui."
+
+            elif name == "take_screenshot":
+                try:
+                    import pyautogui, tempfile, os
+                    path = os.path.join(tempfile.gettempdir(), "jarvis_screenshot.png")
+                    pyautogui.screenshot(path)
+                    result = f"Capture effectuée : {path}. Veuillez utiliser ce chemin pour l'analyser si nécessaire."
+                except Exception as e:
+                    result = f"Capture échouée: {e}"
+
+            elif name == "browser_navigate":
+                action = args.get("action")
+                if action == "open":
+                    import webbrowser
+                    webbrowser.open(args.get("url", ""))
+                    result = "URL ouverte."
+                else:
+                    result = "Pour scraper ou faire des actions complexes, merci d'utiliser l'outil run_code avec Playwright ou selenium, car l'intégration Browser-Use complète est en cours d'installation."
+
+            elif name == "calculate":
+                import math
+                safe_dict = {k: v for k, v in math.__dict__.items() if not k.startswith("__")}
+                try:
+                    res = eval(args.get("expression", ""), {"__builtins__": None}, safe_dict)
+                    result = str(res)
+                except Exception as e:
+                    result = f"Erreur de calcul: {e}"
+
+            elif name == "run_code":
+                import subprocess, tempfile, os
+                code = args.get("code", "")
+                lang = args.get("language", "python")
+                if lang == "python":
+                    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:
+                        f.write(code)
+                        tmp = f.name
+                    try:
+                        res = subprocess.getoutput(f"python {tmp}")
+                        result = res[:3000] + ("\n[Output truncated...]" if len(res)>3000 else "")
+                    except Exception as e:
+                        result = str(e)
+                    finally:
+                        os.remove(tmp)
+                elif lang in ["bash", "powershell"]:
+                    try:
+                        res = subprocess.getoutput(code)
+                        result = res[:3000] + ("\n[Output truncated...]" if len(res)>3000 else "")
+                    except Exception as e:
+                        result = str(e)
+                else:
+                    result = f"Unsupported language {lang} for direct run."
+
             else:
-                # Catch-all for composio, langchain, browser-use, crewai implementations pending integration
-                result = f"L'outil {name} a été intercepté. L'intégration complète via Composio/LangChain/Browser-Use est en cours de configuration locale."
+                # Catch-all
+                result = f"L'outil {name} n'a pas d'implémentation directe. Contournez cette limitation en utilisant 'run_code' pour écrire un script Python accomplissant la tâche."
 
         except Exception as e:
             result = f"Tool '{name}' failed: {e}"
