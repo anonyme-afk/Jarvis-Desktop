@@ -570,6 +570,33 @@ class JarvisLive:
         self.ui.on_text_command = self._on_text_command
         self._turn_done_event = None
 
+    async def _update_memory_async(self, user_input: str, assistant_response: str):
+        """
+        Background task to extract and store long-term memory facts via OpenRouter.
+        Drains web-hud memory tasks to Free API models.
+        """
+        if not user_input or not assistant_response:
+            return
+        try:
+            from memory.memory_manager import should_extract_memory, extract_memory, update_memory
+            loop = asyncio.get_event_loop()
+            should = await loop.run_in_executor(None, should_extract_memory, user_input, assistant_response)
+            if should:
+                print(f"[Memory Async] Intelligent insights found inside turn. Extracting facts...")
+                extracted = await loop.run_in_executor(None, extract_memory, user_input, assistant_response)
+                if extracted and isinstance(extracted, dict) and extracted != {}:
+                    print(f"[Memory Async] Extracted data: {extracted}")
+                    await loop.run_in_executor(None, update_memory, extracted)
+                    print(f"[Memory Async] Long-term memory successfully updated in background.")
+                    self.ui.write_log(f"[Mémoire] 💾 Nouvelle connaissance enregistrée : {list(extracted.keys())}")
+                else:
+                    print(f"[Memory Async] Extraction yielded no structured updates.")
+            else:
+                print(f"[Memory Async] Interaction parsed. No stable long-term facts learned.")
+        except Exception as e:
+            print(f"[Memory Async] Exception in memory background task: {e}")
+
+
     def _on_text_command(self, text: str):
         if not self._loop or not self.session:
             return
@@ -1145,6 +1172,9 @@ class JarvisLive:
                             if full_out:
                                 self.ui.write_log(f"Jarvis: {full_out}")
                                 _push_event("jarvis", full_out)
+                                # Trigger background thread-safe async memory processing using OpenRouter
+                                if full_in and full_out:
+                                    asyncio.create_task(self._update_memory_async(full_in, full_out))
                             out_buf = []
 
                     if response.tool_call:

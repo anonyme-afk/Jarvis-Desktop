@@ -213,3 +213,64 @@ def forget(key: str, category: str = "notes") -> str:
 
 
 forget_memory = forget
+
+
+def should_extract_memory(user_input: str, assistant_response: str) -> bool:
+    """
+    Uses OpenRouter Free to decide if dialogue yields new user factual insights.
+    """
+    prompt = (
+        "Tu es un module de décision de mémoire pour JARVIS (Tony Stark's AI assistant).\n"
+        "Analyse le court dialogue ci-dessous : des faits personnels stables sur l'utilisateur "
+        "(ex: préférences, nom de proches, projets de vie, anniversaire, souhaits précis) y sont-ils appris ou modifiés ?\n"
+        "Réponds strictement par OUI ou NON, sans explication.\n\n"
+        f"Utilisateur: {user_input}\n"
+        f"JARVIS: {assistant_response}\n"
+    )
+    try:
+        from core.openrouter_client import generate_completion
+        reply = generate_completion(prompt, max_tokens=10, temperature=0.0)
+        return "oui" in reply.lower()
+    except Exception as e:
+        print(f"[Memory Decision] Error or quota limit in memory extraction decision: {e}")
+        return False
+
+
+def extract_memory(user_input: str, assistant_response: str) -> dict:
+    """
+    Extracts structured long term facts from interaction using OpenRouter.
+    """
+    prompt = (
+        "Tu es le système d'extraction de mémoire structurée de JARVIS.\n"
+        "Analyse de manière concise le dialogue suivant et extrais les nouveaux faits personnels de l'utilisateur.\n\n"
+        f"Utilisateur: {user_input}\n"
+        f"JARVIS: {assistant_response}\n\n"
+        "Retourne UNIQUEMENT une chaîne JSON valide représentant l'extraction complète. Ne mets PAS de balise markdown ```json ou ```.\n"
+        "La structure JSON doit correspondre strictement à un ou plusieurs de ces groupes :\n"
+        "{\n"
+        "  \"identity\": {\"name\": \"...\", \"birthday\": \"...\", \"city\": \"...\"},\n"
+        "  \"preferences\": {\"cle_pref\": \"valeur\"},\n"
+        "  \"projects\": {\"titre_projet\": \"valeur\"},\n"
+        "  \"relationships\": {\"prenom_parent\": \"Lien de relation, ex: épouse/ami\"},\n"
+        "  \"wishes\": {\"cle_souhait\": \"valeur\"},\n"
+        "  \"notes\": {\"titre_note\": \"valeur\"}\n"
+        "}\n\n"
+        "Si aucune information substantielle ou pérenne n'est détectée, retourne {}."
+    )
+    try:
+        from core.openrouter_client import generate_completion
+        reply = generate_completion(prompt, temperature=0.1, max_tokens=1000)
+        reply_clean = reply.strip()
+        if reply_clean.startswith("```"):
+            reply_clean = reply_clean.split("\n", 1)[-1]
+            if reply_clean.endswith("```"):
+                reply_clean = reply_clean.rsplit("\n", 1)[0]
+            reply_clean = reply_clean.strip()
+            if reply_clean.lower().startswith("json"):
+                reply_clean = reply_clean[4:].strip()
+        if not reply_clean or reply_clean == "{}":
+            return {}
+        return json.loads(reply_clean)
+    except Exception as e:
+        print(f"[Memory Extractor] Error extracting memory facts: {e}")
+        return {}

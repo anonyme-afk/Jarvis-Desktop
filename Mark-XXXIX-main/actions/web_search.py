@@ -60,13 +60,36 @@ def _format_ddg(query: str, results: list[dict]) -> str:
     if not results:
         return f"No results found for: {query}"
 
-    lines = [f"Search results for: {query}\n"]
+    raw_lines = []
     for i, r in enumerate(results, 1):
-        if r.get("title"):   lines.append(f"{i}. {r['title']}")
-        if r.get("snippet"): lines.append(f"   {r['snippet']}")
-        if r.get("url"):     lines.append(f"   {r['url']}")
-        lines.append("")
-    return "\n".join(lines).strip()
+        snip = r.get("snippet", "")
+        title = r.get("title", "")
+        if title:
+            raw_lines.append(f"Result {i}: {title}\nSnippet: {snip}")
+
+    raw_text = "\n\n".join(raw_lines)
+    prompt = (
+        f"Tu es l'assistant JARVIS (Iron Man).\n"
+        f"Voici des résultats bruts de recherche web pour la requête : '{query}'.\n"
+        f"Synthétise ces informations sous forme de réponse claire, structurée et concise pour l'utilisateur. "
+        "Cite succinctement les éléments de manière naturelle (comme JARVIS le ferait).\n\n"
+        f"Données de recherche :\n{raw_text}\n"
+    )
+    try:
+        from core.openrouter_client import generate_completion
+        print("[WebSearch Async] Synthesizing DuckDuckGo search results using OpenRouter...")
+        synthesized = generate_completion(prompt)
+        return synthesized
+    except Exception as e:
+        print(f"[WebSearch] OpenRouter synthesis failed, returning raw results: {e}")
+        lines = [f"Search results for: {query}\n"]
+        for i, r in enumerate(results, 1):
+            if r.get("title"):   lines.append(f"{i}. {r['title']}")
+            if r.get("snippet"): lines.append(f"   {r['snippet']}")
+            if r.get("url"):     lines.append(f"   {r['url']}")
+            lines.append("")
+        return "\n".join(lines).strip()
+
 
 def _compare(items: list[str], aspect: str) -> str:
     query = (
