@@ -481,6 +481,16 @@ async function send(text) {
   
   // Interception de commandes de caméra / carte locales
   const tLow = text.toLowerCase();
+  
+  if (tLow.includes('ouvre la caméra') || tLow.includes('allume la caméra') || tLow.includes('active la vision') || tLow.includes('ouvre la camera')) {
+      setTimeout(() => { if (!STATE.camActive) showCam(); }, 300);
+      return;
+  }
+  if (tLow.includes('ferme la caméra') || tLow.includes('éteins la caméra') || tLow.includes('ferme la camera') || tLow.includes('eteins la camera')) {
+      setTimeout(() => { if (STATE.camActive) hideCam(); }, 300);
+      return;
+  }
+  
   if (tLow.includes('verrouille') || tLow.includes('affiche la carte') || tLow.includes('lock on') || tLow.includes('montre la carte')) {
     setTimeout(() => { showMap(text); }, 400); 
   } else if (tLow.includes('ferme la carte') || tLow.includes('cache la carte')) {
@@ -509,7 +519,7 @@ async function send(text) {
        modeUsed = 'system';
        if (d.action.type === 'open_url' || d.action.action === 'open_url') {
            window.open(d.action.url, '_blank');
-       } else if (d.action.command === 'camera' || d.action.command === 'vision') {
+       } else if (d.action.command === 'camera' || d.action.command === 'vision' || d.action.command === 'caméra' || d.action.command === 'video') {
            toggleCam();
        } else if (d.action.command === 'screen') {
            sysMsg('Capture écran non dispo sans https.');
@@ -541,23 +551,30 @@ function renderOsintReport(report) {
   if (!z) return;
   checkContent();
   const wrap = document.createElement('div');
-  wrap.className = `msg m-jarvis`;
+  wrap.className = `msg m-jarvis osint-msg`;
   
   let html = `<div class="msg-who">JARVIS</div><span class="mode-tag mt-exec">OSINT REPORT</span>
     <div class="osint-container" style="background: rgba(0, 20, 40, 0.6); border: 1px solid #00e5ff; border-radius: 4px; padding: 12px; margin-top: 8px;">
-      <h3 style="color: #00e5ff; margin-top: 0; font-family: 'Share Tech Mono', monospace; font-size: 14px;">[ ${report.title.toUpperCase()} ]</h3>
-      <p style="color: #a0c0e0; font-size: 13px; margin-bottom: 12px;">${report.summary}</p>
+      <h3 style="color: #00e5ff; margin-top: 0; font-family: 'Share Tech Mono', monospace; font-size: 14px;">[ ${report.title ? report.title.toUpperCase() : "RAPPORT OSINT"} ]</h3>
+      <p style="color: #a0c0e0; font-size: 13px; margin-bottom: 12px;">${report.summary || "Scan terminé."}</p>
       <div style="display: flex; flex-direction: column; gap: 8px;">`;
       
-  if (report.data) {
+  if (report.data && report.data.length) {
     report.data.forEach(item => {
       html += `
         <div style="background: rgba(0,0,0,0.4); border-left: 2px solid #00e5ff; padding: 6px 10px;">
-          <strong style="color: #4dfa9f; font-size: 11px;">>_ ${item.source.toUpperCase()}</strong>
-          <div style="color: #d4e8ff; font-family: 'Share Tech Mono', monospace; font-size: 12px; margin-top: 4px;">${item.info}</div>
+          <strong style="color: #4dfa9f; font-size: 11px;">>_ ${item.source ? item.source.toUpperCase() : "SOURCE"}</strong>
+          <div style="color: #d4e8ff; font-family: 'Share Tech Mono', monospace; font-size: 12px; margin-top: 4px;">${item.info || "Aucune information."}</div>
         </div>
       `;
     });
+  } else {
+     html += `
+        <div style="background: rgba(0,0,0,0.4); border-left: 2px solid #00e5ff; padding: 6px 10px;">
+          <strong style="color: #4dfa9f; font-size: 11px;">>_ SYSTÈME</strong>
+          <div style="color: #d4e8ff; font-family: 'Share Tech Mono', monospace; font-size: 12px; margin-top: 4px;">Aucune donnée critique identifiée pour cette requête.</div>
+        </div>
+      `;
   }
   
   html += `</div>`;

@@ -1,7 +1,12 @@
-# JARVIS Desktop v4 (Refonte Holographique & Cerveau Open Interpreter)
+# JARVIS Desktop v5 (Fusion MARK XXXIX)
 
-Interface holographique avancée style **Blueprint Tactique Iron Man** intégrant la nouvelle architecture bidirectionnelle : **Le Cerveau + Les Mains (Open Interpreter)**.
-Conçu pour fonctionner de manière fluide sur **Windows, Mac, et Linux** avec un design haute fidélité extrêmement réactif.
+Interface holographique avancée style **Blueprint Tactique Iron Man** fusionnée avec le puissant backend **Mark-XXXIX**.
+Conçu pour fonctionner de manière fluide sur **Windows, Mac, et Linux**.
+
+## 🚀 Qu'est-ce qui a changé dans cette fusion ?
+- Le frontend (HUD) holographique exceptionnel de l'ancien Jarvis-Desktop a été conservé (`index.html`, `renderer.js`).
+- Le cerveau backend a été entièrement remplacé par le puissant moteur **Mark-XXXIX** basé sur l'IA de Google (Gemini) et qui gère les APIs systèmes, le contrôle du PC, etc. L'interface propre à Mark-XXXIX a été supprimée, pour connecter son cœur au magnifique front-end.
+- La communication a été pontée via un micro-serveur Flask (Port 5001) proxyfié par Vite.
 
 ---
 
@@ -85,13 +90,10 @@ C'est le tableau de bord visible, géré par **Vite / Node.js** pour une fluidit
 * **`renderer.js`** : Moteur événementiel chargé d'écouter votre voix via Web Speech API, de capturer la webcam, et d'envoyer les instructions utilisateur au Cerveau NodeJS/Python.
 * **`server.ts`** : Petit serveur Node local qui sécurise et expose l'interface à l'adresse locale.
 
-### Le Backend (Moteur Python & Open Interpreter Core)
+### Le Backend (Moteur Python MARK XXXIX)
 C'est l'entité qui réfléchit, planifie et exécute. Tournant en arrière-plan (serveur Flask sur le port 5001), il gère l'orchestration du modèle intelligent.
-* **`jarvis/python/server.py`** : Réceptionne les données brutes envoyées par l'interface HUD et utilise **Open Interpreter** pour piloter les actions locales.
-* **Open Interpreter Core** : Plus de routage rigide ou de fonctions limitées ! Tout ce que vous dites est analysé par l'IA, qui écrit elle-même en direct les scripts Python ou les scripts Shell (Bash / Windows Command Line) nécessaires pour l'exécuter, puis les lance sur votre machine (en mode automatique grâce à `interpreter.auto_run = True`).
-  * *"Ouvre Chrome sur YouTube"* ➔ Génère et exécute le script `webbrowser.open("https://youtube.com")`
-  * *"Écris un script Python de tri"* ➔ Génère et lance le script d'écriture locale.
-  * *"Quel est mon CPU ?"* ➔ Génère et lance `psutil.cpu_percent()` et répond précisément.
+* **`Mark-XXXIX-main/main.py`** : Réceptionne les données brutes envoyées par l'interface HUD, et fait appel au moteur Gemini 2.5 Flash pour générer du texte et effectuer de puissants appels d'outils système (actions).
+* **Outils d'action (Actions Core)** : Dossier `actions/`, il contient tout le répertoire d'aptitudes système (Web search, Desktop Control, Files Control...).
 
 ---
 
