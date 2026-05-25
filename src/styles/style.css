@@ -315,6 +315,10 @@ body::after {
 .mt-exec   { background:rgba(255,184,48,0.11); color:var(--amber); }
 .mt-browser{ background:rgba(90,200,232,0.11); color:var(--cyan); }
 
+/* OSINT EXPORT BTN */
+.osint-export-btn { transition: all 0.2s ease; }
+.osint-export-btn:hover { background: rgba(0,243,255,0.2) !important; text-shadow: 0 0 5px #00e5ff; border-color: #00e5ff !important; }
+
 /* Typing cursor */
 .typing::after {
   content:'▋'; color:rgba(58,143,212,0.7);

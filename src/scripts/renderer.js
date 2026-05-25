@@ -66,13 +66,50 @@ function initClock() {
 
 // ── MAP RÉSEAU ────────────────────────────────────────
 let mapInstance = null;
-function initMap() {
+let googleMap = null;
+let gmapLoaded = false;
+let gmapPendingCommand = null;
+
+async function initMap() {
   const c = document.getElementById('map-canvas');
   if (!c) return;
   const resize = () => { c.width = innerWidth; c.height = innerHeight; mapInstance?.reset(); };
   resize();
   window.addEventListener('resize', resize);
   mapInstance = new NetworkMap(c);
+
+  // Initialize Google Maps
+  const gmapBg = document.getElementById('gmap-bg');
+  if (gmapBg) {
+    let API_KEY = '';
+    try {
+      API_KEY = window.ENV_GMAPS_KEY || (typeof process !== 'undefined' ? process.env.GOOGLE_MAPS_PLATFORM_KEY : '');
+    } catch(e) {}
+    
+    if (API_KEY) {
+      window.initGMap = async () => {
+        const { Map } = await google.maps.importLibrary("maps");
+        googleMap = new Map(gmapBg, {
+          center: { lat: 48.8566, lng: 2.3522 }, // Paris default
+          zoom: 12,
+          mapId: 'DEMO_MAP_ID', // Requis pour WebGL/3D
+          disableDefaultUI: true,
+          backgroundColor: '#02070E',
+        });
+        gmapLoaded = true;
+        if (gmapPendingCommand) {
+          executeMapCommand(gmapPendingCommand);
+          gmapPendingCommand = null;
+        }
+      };
+      
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&v=weekly&callback=initGMap`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+  }
 }
 class NetworkMap {
   constructor(c) {
@@ -128,15 +165,93 @@ class NetworkMap {
   start() { requestAnimationFrame(t => this.draw(t)); }
   stop()  { cancelAnimationFrame(this.raf); }
 }
-function showMap() {
-  if (!mapInstance) return;
-  document.getElementById('map-canvas').style.opacity = '0.58';
-  mapInstance.start(); STATE.mapActive = true; setContent(true);
+let mapRotationState = { active: false, heading: 0, raf: null };
+
+function executeMapCommand(command) {
+  let API_KEY = "";
+  try { API_KEY = window.ENV_GMAPS_KEY || (typeof process !== 'undefined' ? process.env.GOOGLE_MAPS_PLATFORM_KEY : ''); } catch(e) {}
+  if (!API_KEY) {
+    sysMsg("Erreur : clé GOOGLE_MAPS_PLATFORM_KEY manquante. Configurez les secrets (Settings > Secrets).");
+    hideMap();
+    return;
+  }
+  
+  if (!gmapLoaded || !googleMap) {
+    gmapPendingCommand = command;
+    return;
+  }
+  
+  // Coordinates for a few major cities to simulate locking
+  const cities = {
+    'paris': { lat: 48.8566, lng: 2.3522 },
+    'new york': { lat: 40.7128, lng: -74.0060 },
+    'london': { lat: 51.5074, lng: -0.1278 },
+    'tokyo': { lat: 35.6762, lng: 139.6503 }
+  };
+  
+  let target = cities['paris'];
+  let cityName = 'paris';
+  for (const c in cities) {
+    if (command.toLowerCase().includes(c)) {
+      target = cities[c];
+      cityName = c;
+      break;
+    }
+  }
+
+  // Move camera with tilt and zoom
+  googleMap.moveCamera({
+    center: target,
+    zoom: 16.5,
+    tilt: 55, // Incline la caméra à 55° (pour un bel effet 3D si les batiments sont activés)
+    heading: 0
+  });
+
+  // Start slow rotation
+  mapRotationState.active = true;
+  mapRotationState.heading = 0;
+  cancelAnimationFrame(mapRotationState.raf);
+  
+  function rotateCamera() {
+    if (!mapRotationState.active) return;
+    mapRotationState.heading += 0.08; 
+    googleMap.moveCamera({
+      heading: mapRotationState.heading
+    });
+    mapRotationState.raf = requestAnimationFrame(rotateCamera);
+  }
+  rotateCamera();
+  
+  sysMsg(`📍 V-LOCK: ${cityName.toUpperCase()}. Initialisation du rendu topographique 3D...`);
 }
+
+function showMap(command = "Verrouille Paris") {
+  if (!mapInstance) return;
+  document.getElementById('map-canvas').style.opacity = '0.35'; // Plus discret si la carte Google est derrière
+  
+  const bg = document.getElementById('gmap-bg');
+  if (bg) bg.style.opacity = '1';
+  
+  mapInstance.start(); 
+  STATE.mapActive = true; 
+  setContent(true);
+  
+  executeMapCommand(command);
+}
+
 function hideMap() {
   const el = document.getElementById('map-canvas');
   if (el) el.style.opacity = '0';
-  mapInstance?.stop(); STATE.mapActive = false; checkContent();
+  
+  const bg = document.getElementById('gmap-bg');
+  if (bg) bg.style.opacity = '0';
+  
+  mapRotationState.active = false;
+  cancelAnimationFrame(mapRotationState.raf);
+  
+  mapInstance?.stop(); 
+  STATE.mapActive = false; 
+  checkContent();
 }
 
 // ── WAVEFORM ──────────────────────────────────────────
@@ -219,10 +334,22 @@ function initRecognition() {
     if (e.error === 'not-allowed') { sysMsg('<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Accès micro refusé'); stopMic(); }
   };
   r.onresult = e => {
-    const last = e.results[e.results.length-1];
-    if (last.isFinal) {
-      const t = last[0].transcript.trim();
-      if (t.length > 1) send(t);
+    let finalStr = '';
+    let interimStr = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        if (res.isFinal) finalStr += res[0].transcript;
+        else interimStr += res[0].transcript;
+    }
+    
+    const inputEl = document.getElementById('txt');
+    if (inputEl) {
+        if (interimStr) inputEl.value = interimStr;
+        else if (finalStr) inputEl.value = ''; // clears on send
+    }
+    
+    if (finalStr.trim().length > 1) {
+        send(finalStr.trim());
     }
   };
   STATE.recognition = r;
@@ -330,10 +457,36 @@ function sendTxt() {
   el.value = '';
 }
 
+function speakNatural(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utter = new window.SpeechSynthesisUtterance(text.replace(/[*_#`\[\]]/g, '').substring(0, 400));
+  utter.lang = 'fr-FR';
+  utter.rate = 1.05;
+  utter.pitch = 0.9;
+  
+  const voices = window.speechSynthesis.getVoices();
+  // Try to find a high quality French voice
+  let voice = voices.find(v => v.lang.includes('fr') && (v.name.includes('Google') || v.name.includes('Thomas') || v.name.includes('Microsoft Paul')));
+  if (!voice) voice = voices.find(v => v.lang.includes('fr'));
+  if (voice) utter.voice = voice;
+  
+  window.speechSynthesis.speak(utter);
+}
+
 async function send(text) {
   if (!text) return;
   STATE.history.push(text);
   addMsg(text, 'user');
+  
+  // Interception de commandes de caméra / carte locales
+  const tLow = text.toLowerCase();
+  if (tLow.includes('verrouille') || tLow.includes('affiche la carte') || tLow.includes('lock on') || tLow.includes('montre la carte')) {
+    setTimeout(() => { showMap(text); }, 400); 
+  } else if (tLow.includes('ferme la carte') || tLow.includes('cache la carte')) {
+    setTimeout(() => { hideMap(); }, 400);
+  }
+
   orbState('think');
   const t0 = Date.now();
   
@@ -363,17 +516,79 @@ async function send(text) {
        }
     }
     
-    addMsg(d.reply || 'Fait.', 'jarvis', modeUsed);
-    if ('speechSynthesis' in window) {
-       const utter = new window.SpeechSynthesisUtterance((d.reply || 'Fait').replace(/[*_#`]/g, '').substring(0, 200));
-       utter.lang = 'fr-FR';
-       window.speechSynthesis.speak(utter);
-    }
+    // Check if reply is a JSON string (like our OSINT report)
+    let replyContent = d.reply || 'Fait.';
+    try {
+      const parsedReply = JSON.parse(replyContent);
+      if (parsedReply.type === 'osint_report') {
+        modeUsed = 'system';
+        renderOsintReport(parsedReply);
+        return;
+      }
+    } catch(e) {}
+    
+    addMsg(replyContent, 'jarvis', modeUsed);
+    speakNatural(replyContent);
     
   } catch (e) {
     orbState();
     addMsg('Erreur de communication avec le noyau central.', 'jarvis');
   }
+}
+
+function renderOsintReport(report) {
+  const z = document.getElementById('chat-zone');
+  if (!z) return;
+  checkContent();
+  const wrap = document.createElement('div');
+  wrap.className = `msg m-jarvis`;
+  
+  let html = `<div class="msg-who">JARVIS</div><span class="mode-tag mt-exec">OSINT REPORT</span>
+    <div class="osint-container" style="background: rgba(0, 20, 40, 0.6); border: 1px solid #00e5ff; border-radius: 4px; padding: 12px; margin-top: 8px;">
+      <h3 style="color: #00e5ff; margin-top: 0; font-family: 'Share Tech Mono', monospace; font-size: 14px;">[ ${report.title.toUpperCase()} ]</h3>
+      <p style="color: #a0c0e0; font-size: 13px; margin-bottom: 12px;">${report.summary}</p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">`;
+      
+  if (report.data) {
+    report.data.forEach(item => {
+      html += `
+        <div style="background: rgba(0,0,0,0.4); border-left: 2px solid #00e5ff; padding: 6px 10px;">
+          <strong style="color: #4dfa9f; font-size: 11px;">>_ ${item.source.toUpperCase()}</strong>
+          <div style="color: #d4e8ff; font-family: 'Share Tech Mono', monospace; font-size: 12px; margin-top: 4px;">${item.info}</div>
+        </div>
+      `;
+    });
+  }
+  
+  html += `</div>`;
+  
+  if (report.downloadable) {
+    html += `<button class="osint-export-btn" style="margin-top: 12px; background: rgba(0,229,255,0.1); border: 1px solid #00e5ff; color: #00e5ff; padding: 6px 12px; cursor: pointer; font-family: 'Share Tech Mono'; font-size: 11px;">[ EXPORTER ${report.file_format.toUpperCase()} ]</button>`;
+  }
+  
+  html += `</div>`;
+  wrap.innerHTML = html;
+  z.appendChild(wrap);
+  
+  if (report.downloadable) {
+    const btn = wrap.querySelector('.osint-export-btn');
+    if (btn) {
+      btn.onclick = () => {
+        const textData = `===== ${report.title} =====\nDate: ${new Date().toISOString()}\n\n${report.summary}\n\n[ DONNÉES ]\n` + 
+          (report.data || []).map(d => `> ${d.source}\n${d.info}`).join('\n\n');
+        const blob = new Blob([textData], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `jarvis_osint_${Date.now()}.${report.file_format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+    }
+  }
+  
+  z.scrollTop = z.scrollHeight;
+  speakNatural("Analyse terminée. Rapport structuré affiché.");
 }
 
 // ── UTILS ET INTERACTIONS ────────────────────────────
@@ -400,6 +615,7 @@ const TOOLS = [
   { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>`, label: 'Réseau Info',  cmd: 'Quel est mon statut réseau ?' },
   { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>`, label: 'Vision Cam', cmd: null, fn: () => { toggleCam(); } },
   { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>`, label: 'Scanner Carte', cmd: null, fn: () => { showMap(); setTimeout(hideMap, 6000); } },
+  { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><line x1="9" x2="15" y1="9" y2="9"></line><line x1="9" x2="15" y1="15" y2="15"></line></svg>`, label: 'OSINT MODE', cmd: 'Lance une recherche OSINT sur ' }
 ];
 
 function initTools() {

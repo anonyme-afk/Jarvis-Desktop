@@ -12,8 +12,12 @@
   <!-- FOND GRILLE MILLIMÈTRE -->
   <div id="grid-bg"></div>
   
+  <!-- CARTE GOOGLE MAPS -->
+  <div id="gmap-bg" style="position:fixed; inset:0; z-index:0; opacity:0; transition: opacity 2s ease;"></div>
+
   <!-- CANVAS CARTE RÉSEAU (fond) -->
-  <canvas id="map-canvas"></canvas>
+  <canvas id="map-canvas" style="position:fixed; inset:0; z-index:1; pointer-events:none;"></canvas>
+
 
   <!-- APP PRINCIPALE -->
   <div id="app">
@@ -173,6 +177,14 @@
     </div>
   </div>
 
+  <!-- BOOT SCRIPT -->
+  <script type="module">
+    try {
+      window.ENV_GMAPS_KEY = process.env.GOOGLE_MAPS_PLATFORM_KEY || "";
+    } catch(e) {
+      window.ENV_GMAPS_KEY = "";
+    }
+  </script>
   <script src="/src/scripts/renderer.js"></script>
 </body>
 </html>

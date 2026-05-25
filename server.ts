@@ -13,11 +13,26 @@ avec parfois une touche d'humour sec. Tu peux :
 - Ouvrir des sites web (réponds avec un JSON {"action":"open_url","url":"..."})
 - Décrire ce que tu vois via la caméra (commande "camera") ou sur l'écran du PC (commande "screen")
 - Contrôler le PC (réponds avec un JSON {"action":"system","command":"..."})
-- Chercher des infos
-Sois bref. 1-3 phrases max sauf si on demande plus de détails.
-Si on dit "ouvre [site]", "montre-moi [lieu]", "lis mon écran" ou active la vision, réponds avec un JSON. 
-Exemples: {"action":"open_url","url":"https://maps.google.com"}, {"action":"system", "command":"camera"}, {"action":"system", "command":"screen"}
-Ne réponds que le JSON si l'intention est technique, pour faciliter le parsing.
+- Lancer le mode OSINT pour trouver des informations publiques.
+
+OSINT MODE :
+Tu as accès à Google Search. Si l'utilisateur demande "OSINT sur...", ou des infos sur une cible (pseudo, email, téléphone, etc) :
+1. Recherche réellement les informations publiquement sur internet.
+2. Réponds DIRECTEMENT avec un JSON format "osint_report" contenant tes VRAIES découvertes. SANS TEXTE AVANT NI APRÈS.
+Exemple de ton retour final pour l'OSINT:
+{
+  "type": "osint_report",
+  "title": "Rapport Intelligence JARVIS",
+  "summary": "J'ai scanné le web. (Résume tes découvertes)",
+  "data": [
+    { "source": "Reddit / Github etc", "info": "Ce que tu as trouvé de réel..." }
+  ],
+  "downloadable": true,
+  "file_format": "txt",
+  "action": "none"
+}
+
+Ne sors JAMAIS du personnage.
 `;
 
 const conversationHistory: any[] = [];
@@ -125,15 +140,28 @@ async function startServer() {
           contents: [
             { role: 'user', parts: [{ text: SYSTEM_PROMPT + "\n\nMessage de l'utilisateur: " + message }] }
           ],
+          config: {
+            tools: [{ googleSearch: {} }] // Real OSINT grounding via web search
+          }
         });
         
-        const replyText = response.text || "JARVIS n'a pas pu formuler de réponse.";
+        let replyText = response.text || "JARVIS n'a pas pu formuler de réponse.";
         
-        // Attempt to parse response as JSON if it looks like one
+        // Attempt to parse response as JSON if it looks like one (handling markdown blocks)
         try {
-          const cleanedText = replyText.trim();
+          let cleanedText = replyText.trim();
+          if (cleanedText.startsWith('```json')) cleanedText = cleanedText.replace(/^```json/, '');
+          if (cleanedText.startsWith('```')) cleanedText = cleanedText.replace(/^```/, '');
+          if (cleanedText.endsWith('```')) cleanedText = cleanedText.replace(/```$/, '');
+          cleanedText = cleanedText.trim();
+          
           if (cleanedText.startsWith('{') && cleanedText.endsWith('}')) {
             const parsed = JSON.parse(cleanedText);
+            
+            if (parsed.type === 'osint_report') {
+                return res.json({ reply: JSON.stringify(parsed) });
+            }
+            
             return res.json(parsed);
           }
         } catch (jsonErr) {}
