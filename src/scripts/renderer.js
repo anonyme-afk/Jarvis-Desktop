@@ -403,6 +403,94 @@ function initLiveStream() {
   es.onerror = () => setTimeout(initLiveStream, 3000);
 }
 
+// ── SPEECH RECOGNITION FALLBACK (WEB INTERACTION) ─────────────────
+let recognition = null;
+let browserMuted = true;
+
+function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn("Speech recognition not supported in this browser.");
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.lang = "fr-FR";
+
+  recognition.onstart = () => {
+    browserMuted = false;
+    updateMicStatusUI(true);
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length - 1][0].transcript.trim();
+    if (transcript) {
+      send(transcript);
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.warn("[Web Speech] Error:", event.error);
+    if (event.error === 'not-allowed') {
+      sysMsg("Accès micro bloqué. Autorisez le microphone dans votre navigateur.");
+      stopWebMic();
+    }
+  };
+
+  recognition.onend = () => {
+    if (!browserMuted) {
+      try {
+        recognition.start();
+      } catch (e) {}
+    } else {
+      updateMicStatusUI(false);
+    }
+  };
+}
+
+function startWebMic() {
+  browserMuted = false;
+  STATE.listening = true;
+  if (!recognition) {
+    initSpeechRecognition();
+  }
+  if (recognition) {
+    try {
+      recognition.start();
+    } catch (e) {}
+  }
+}
+
+function stopWebMic() {
+  browserMuted = true;
+  STATE.listening = false;
+  if (recognition) {
+    try {
+      recognition.stop();
+    } catch(e) {}
+  }
+}
+
+function updateMicStatusUI(active) {
+  const m = document.getElementById("h-mic");
+  if (active) {
+    orbState("listen");
+    if (m) {
+      m.textContent = "ÉCOUTE";
+      m.classList.add("ok");
+      m.classList.remove("err");
+    }
+  } else {
+    orbState();
+    if (m) {
+      m.textContent = "MUET";
+      m.classList.remove("ok");
+      m.classList.add("err");
+    }
+  }
+}
+
 function initStatusPolling() {
   setInterval(async () => {
     try {
@@ -427,20 +515,40 @@ function initStatusPolling() {
         }
       }
       STATE.listening = !d.muted;
-    } catch (e) {}
+      if (recognition && !browserMuted) {
+        browserMuted = true;
+        recognition.stop();
+      }
+    } catch (e) {
+      // Server offline fallback: use browser-native status
+      updateMicStatusUI(!browserMuted);
+      STATE.listening = !browserMuted;
+    }
   }, 600);
 }
 
 async function toggleMic() {
-  await fetch("/api/toggle-mute", { method: "POST" });
+  try {
+    const r = await fetch("/api/status");
+    if (!r.ok) throw new Error("Offline");
+    await fetch("/api/toggle-mute", { method: "POST" });
+  } catch (e) {
+    if (browserMuted) {
+      startWebMic();
+    } else {
+      stopWebMic();
+    }
+  }
 }
 
 function stopMic() {
-  fetch("/api/mute", { method: "POST" });
+  fetch("/api/mute", { method: "POST" }).catch(() => {});
+  stopWebMic();
 }
 
 function startMic() {
-  fetch("/api/unmute", { method: "POST" });
+  fetch("/api/unmute", { method: "POST" }).catch(() => {});
+  startWebMic();
 }
 
 // ── GESTION DES MESSAGES ────────────────────────────
@@ -611,6 +719,30 @@ async function send(text) {
     setTimeout(() => {
       orbState(STATE.listening ? "listen" : "");
     }, 2000);
+
+    // Direct autonomous fallback or OSINT report display
+    if (d.type === "osint_report") {
+      renderOsintReport(d);
+    } else if (d.reply && d.reply !== "Message envoyé à JARVIS.") {
+      try {
+        const parsed = JSON.parse(d.reply);
+        if (parsed && parsed.type === "osint_report") {
+          renderOsintReport(parsed);
+        } else if (parsed && parsed.action === "open_url") {
+          window.open(parsed.url, "_blank");
+          if (parsed.reply) {
+            addMsg(parsed.reply, "jarvis");
+            speakNatural(parsed.reply);
+          }
+        } else {
+          addMsg(d.reply, "jarvis");
+          speakNatural(d.reply);
+        }
+      } catch (e) {
+        addMsg(d.reply, "jarvis");
+        speakNatural(d.reply);
+      }
+    }
 
     let modeUsed = d.mode_used || "";
     if (d.action) {
@@ -885,4 +1017,5 @@ window.sendTxt = sendTxt;
 window.toggleTools = toggleTools;
 window.toggleModelPanel = toggleModelPanel;
 window.toggleCam = toggleCam;
+window.toggleMic = toggleMic;
 window.setProvider = setProvider;

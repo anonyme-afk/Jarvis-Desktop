@@ -3,7 +3,14 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ 
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    }
+  }
+});
 
 const SYSTEM_PROMPT = `
 Tu es JARVIS, l'assistant IA de l'utilisateur. Tu es calme, précis, légèrement formel
@@ -46,13 +53,13 @@ async function startServer() {
   // API Health Route
   app.get("/api/health", async (req, res) => {
     try {
-      const response = await fetch('http://127.0.0.1:5001/health');
+      const response = await fetch('http://127.0.0.1:5001/api/health');
       const data = await response.json();
       res.json({
         status: data.status,
         model: data.provider || "GEMINI-3.5-FLASH"
       });
-    } catch (e) {
+    } catch (e: any) {
       res.json({ status: "ok", model: "GEMINI-3.5-FLASH (WEB FALLBACK)" });
     }
   });
@@ -60,10 +67,10 @@ async function startServer() {
   // Providers List
   app.get("/api/providers", async (req, res) => {
     try {
-      const response = await fetch('http://127.0.0.1:5001/providers');
+      const response = await fetch('http://127.0.0.1:5001/api/providers');
       const data = await response.json();
       res.json(data);
-    } catch (e) {
+    } catch (e: any) {
       res.json({
         providers: [
           { name: "Gemini 3.5 Flash (Gratuit)", id: "gemini" },
@@ -77,14 +84,14 @@ async function startServer() {
   // Set Provider
   app.post("/api/set-provider", async (req, res) => {
     try {
-      const response = await fetch('http://127.0.0.1:5001/set-provider', {
+      const response = await fetch('http://127.0.0.1:5001/api/set-provider', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req.body)
       });
       const data = await response.json();
       res.json(data);
-    } catch (e) {
+    } catch (e: any) {
       res.json({ success: true, provider: req.body.provider_id || "gemini" });
     }
   });
@@ -92,12 +99,12 @@ async function startServer() {
   // Stop TTS / VAD Interrupt
   app.post("/api/stop-tts", async (req, res) => {
     try {
-      const response = await fetch('http://127.0.0.1:5001/stop-tts', {
+      const response = await fetch('http://127.0.0.1:5001/api/stop-tts', {
         method: 'POST'
       });
       const data = await response.json();
       res.json(data);
-    } catch (e) {
+    } catch (e: any) {
       res.json({ success: true });
     }
   });
@@ -105,14 +112,14 @@ async function startServer() {
   // Browser Toggle
   app.post("/api/browser/toggle", async (req, res) => {
     try {
-      const response = await fetch('http://127.0.0.1:5001/browser/toggle', {
+      const response = await fetch('http://127.0.0.1:5001/api/browser/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req.body)
       });
       const data = await response.json();
       res.json(data);
-    } catch (e) {
+    } catch (e: any) {
       res.json({ success: false, error: "Serveur local inactif" });
     }
   });
@@ -121,7 +128,7 @@ async function startServer() {
   app.post("/api/tool-chat", async (req, res) => {
     const message = req.body.message || "";
     try {
-      const response = await fetch('http://127.0.0.1:5001/tool-chat', {
+      const response = await fetch('http://127.0.0.1:5001/api/tool-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req.body)
@@ -132,13 +139,21 @@ async function startServer() {
       // Offline fallback: Use Google GenAI directly if GEMINI_API_KEY is defined
       try {
         if (!process.env.GEMINI_API_KEY) {
-          return res.json({ reply: "Mode autonome. Activez votre clé API GEMINI_API_KEY dans le fichier .env de l'éditeur pour converser directement." });
+          res.json({ reply: "Mode autonome. Activez votre clé API GEMINI_API_KEY dans le fichier .env de l'éditeur pour converser directement." });
+          return;
+        }
+
+        // Add user statement to historic chain (limit list size)
+        conversationHistory.push({ role: "user", parts: [{ text: message }] });
+        if (conversationHistory.length > 20) {
+          conversationHistory.shift();
         }
         
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.5-flash',
           contents: [
-            { role: 'user', parts: [{ text: SYSTEM_PROMPT + "\n\nMessage de l'utilisateur: " + message }] }
+            { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+            ...conversationHistory
           ],
           config: {
             tools: [{ googleSearch: {} }] // Real OSINT grounding via web search
@@ -146,6 +161,12 @@ async function startServer() {
         });
         
         let replyText = response.text || "JARVIS n'a pas pu formuler de réponse.";
+        
+        // Add model answer to historic chain
+        conversationHistory.push({ role: "model", parts: [{ text: replyText }] });
+        if (conversationHistory.length > 20) {
+          conversationHistory.shift();
+        }
         
         // Attempt to parse response as JSON if it looks like one (handling markdown blocks)
         try {
@@ -159,30 +180,38 @@ async function startServer() {
             const parsed = JSON.parse(cleanedText);
             
             if (parsed.type === 'osint_report') {
-                return res.json({ reply: JSON.stringify(parsed) });
+              res.json({ reply: JSON.stringify(parsed) });
+              return;
             }
             if (parsed.action === 'osint') {
-                return res.json({ reply: JSON.stringify({
-                    type: "osint_report",
-                    title: `Rapport Intelligence OSINT JARVIS`,
-                    summary: `Analyse complétée sur la cible : ${parsed.cible} via l'intégration Google Search (Spiderfoot/Sherlock engine).`,
-                    data: [
-                        { source: parsed.outil || "Scanner Multiple", info: `Empreinte numérique détectée via le Web Index.` },
-                        { source: "Recherche en direct", info: `La recherche en direct (Google Search) a été exécutée par JARVIS sur ${parsed.cible}. (Le modèle analysera les résultats publics associés s'ils existent et s'il est interrogé avec plus de précision).` },
-                    ],
-                    downloadable: true,
-                    file_format: "txt"
-                }) });
+              res.json({ reply: JSON.stringify({
+                type: "osint_report",
+                title: `Rapport Intelligence OSINT JARVIS`,
+                summary: `Analyse complétée sur la cible : ${parsed.cible} via l'intégration Google Search (Spiderfoot/Sherlock engine).`,
+                data: [
+                  { source: parsed.outil || "Scanner Multiple", info: `Empreinte numérique détectée via le Web Index.` },
+                  { source: "Recherche en direct", info: `La recherche en direct (Google Search) a été exécutée par JARVIS sur ${parsed.cible}. (Le modèle analysera les résultats publics associés s'ils existent et s'il est interrogé avec plus de précision).` },
+                ],
+                downloadable: true,
+                file_format: "txt"
+              }) });
+              return;
             }
             
-            return res.json(parsed);
+            res.json(parsed);
+            return;
           }
         } catch (jsonErr) {}
         
         res.json({ reply: replyText });
       } catch (geminiErr: any) {
         console.error("Gemini Direct Error:", geminiErr);
-        res.json({ reply: "Erreur d'appel autonome Gemini : " + geminiErr.message });
+        const errStr = (geminiErr.message || geminiErr.toString() || "").toLowerCase();
+        if (errStr.includes("429") || errStr.includes("quota") || errStr.includes("limit") || errStr.includes("exhausted")) {
+          res.json({ reply: "Désolé, la limite de requêtes (quota d'appel gratuit) de l'API Gemini est temporairement épuisée (Erreur 429).\n\nPour continuer à discuter avec moi en mode autonome sans interruption :\n\n1. Attendez simplement une minute (les quotas se réinitialisent par minute).\n2. Vous pouvez aussi ajouter votre propre clé d'API personnelle dans les paramètres de AI Studio (Settings) ou dans le fichier `.env` via la variable `GEMINI_API_KEY`.\n3. Assurez-vous également d'avoir démarré JARVIS localement si vous préférez qu'il l'exécute depuis votre machine." });
+        } else {
+          res.json({ reply: "Erreur d'appel autonome Gemini : " + geminiErr.message });
+        }
       }
     }
   });
@@ -190,7 +219,7 @@ async function startServer() {
   // Backward compatible old api chat
   app.post("/api/chat", async (req, res) => {
     try {
-      const response = await fetch('http://127.0.0.1:5001/tool-chat', {
+      const response = await fetch('http://127.0.0.1:5001/api/tool-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(req.body)
@@ -259,10 +288,14 @@ async function startServer() {
         
         const push = async () => {
           try {
-            const { done, value } = await reader.read();
-            if (done) { res.end(); return; }
-            res.write(decoder.decode(value));
-            push();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) {
+                res.end();
+                break;
+              }
+              res.write(decoder.decode(value));
+            }
           } catch(err) {
             res.end();
           }
@@ -270,9 +303,9 @@ async function startServer() {
         push();
         return;
       }
-    } catch(e) {
+    } catch(e: any) {
       let interval = setInterval(() => {
-        res.write(':\\n\\n'); // Keep-alive comment
+        res.write(': keep-alive\n\n'); // Keep-alive comment
       }, 5000);
       req.on('close', () => clearInterval(interval));
     }
