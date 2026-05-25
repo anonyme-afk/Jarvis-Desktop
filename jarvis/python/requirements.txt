@@ -18,3 +18,4 @@ speedtest-cli
 wikipedia-api
 pyserial
 playwright
+open-interpreter

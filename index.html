@@ -3,159 +3,304 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JARVIS</title>
+  <title>JARVIS — Terminal Intelligent d'Exécution</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;600;700&family=IBM+Plex+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- SCAN LINE OVERLAY -->
+  <!-- EFFETS ET FILTRES D'AFFICHAGE HUD -->
   <div class="scanlines"></div>
-
-  <!-- VIGNETTE -->
   <div class="vignette"></div>
+  <div class="tech-crosshairs"></div>
 
-  <!-- CANVAS RÉSEAU -->
+  <!-- CANVAS ARRIÈRE-PLAN DU SÉLECTEUR RÉSEAU -->
   <canvas id="network-canvas"></canvas>
 
-  <!-- APP -->
-  <div id="app">
+  <!-- CONTENEUR PRINCIPAL DU HUD -->
+  <div id="app" class="hud-layout">
 
-    <!-- HUD TOP LEFT -->
-    <div class="hud-panel hud-tl" id="hud-tl">
-      <div class="hud-bracket"></div>
-      <div class="hud-row">
-        <span class="hud-key">SYS</span>
-        <span class="hud-val mono" id="sys-time">00:00:00</span>
+    <!-- BARRE TECHNIQUE SUPÉRIEURE (HEADER LINE) -->
+    <header class="hud-top-bar">
+      <div class="top-bar-left">
+        <span class="tech-tag glow-cyan">J.A.R.V.I.S // ENGINE 4.0</span>
+        <span class="tech-separator">|</span>
+        <button id="btn-toggle-telemetry" class="top-bar-btn glow-cyan" onclick="toggleTelemetryPanel()" title="Déployer / Replier le panneau SYS_TELEMETRY">[ TELEMETRY: DORMANT ]</button>
       </div>
-      <div class="hud-row">
-        <span class="hud-key">MIC</span>
-        <span class="hud-val" id="mic-status">VEILLE</span>
+      <div class="top-bar-center">
+        <span class="hud-coordinate">LAT: 48.8566 / LON: 2.3522</span>
+        <span class="hud-ping-state glow-green">ONLINE CORE_CONNECT</span>
       </div>
-      <div class="hud-row">
-        <span class="hud-key">CAM</span>
-        <span class="hud-val" id="cam-status">OFF</span>
+      <div class="top-bar-right">
+        <button id="btn-toggle-workspace" class="top-bar-btn glow-cyan" onclick="toggleWorkspacePanel()" title="Déployer / Replier le panneau EXECUTION_WORKSPACE">[ WORKSPACE: DORMANT ]</button>
+        <span class="tech-separator">|</span>
+        <span class="tech-tag glow-cyan">COGNITIVE COMPUTE NODE</span>
       </div>
-      <div class="hud-row">
-        <span class="hud-key">MODE</span>
-        <span class="hud-val accent" id="mode-display">—</span>
-      </div>
-    </div>
+    </header>
 
-    <!-- HUD TOP RIGHT -->
-    <div class="hud-panel hud-tr" id="hud-tr">
-      <div class="hud-bracket"></div>
-      <div class="hud-row hud-row-right">
-        <span class="hud-val mono small" id="model-name">GEMINI 2.0</span>
-        <button class="gear-btn" onclick="toggleProviderSelector()" title="Changer de modèle">⚙</button>
-      </div>
-      <div class="hud-row hud-row-right">
-        <span class="hud-key">API</span>
-        <span class="hud-val" id="api-status">
-          <span class="dot dot-offline"></span>CONNEXION...
-        </span>
-      </div>
-      <div class="hud-row hud-row-right">
-        <span class="hud-key">LATENCE</span>
-        <span class="hud-val mono small" id="latency-display">—</span>
-      </div>
-    </div>
+    <!-- ZONE CENTRALE DE TRAVAIL (BENTO WORKSPACE FRAME) -->
+    <main class="hud-main-workspace">
 
-    <!-- SÉLECTEUR DE MODÈLE -->
+      <!-- ================= PANNEAU SYSTÈME GAUCHE ================= -->
+      <section class="hud-panel hud-left-panel">
+        <div class="hud-panel-header">
+          <div class="hud-panel-title">SYS_TELEMETRY</div>
+          <button class="panel-close-btn" onclick="hideTelemetryPanel()" title="Replier le panneau (Espace libre)">✕</button>
+        </div>
+
+        <div class="hud-panel-body">
+          <!-- RANGÉES HUD ORIGINALES REGROUPÉES POUR LE STYLE -->
+          <div class="hud-metric-row">
+            <span class="hud-key">SYS TIME</span>
+            <span class="hud-val mono glow-text" id="sys-time">00:00:00</span>
+          </div>
+          <div class="hud-metric-row">
+            <span class="hud-key">MIC STAT</span>
+            <span class="hud-val glow-alert" id="mic-status">VEILLE</span>
+          </div>
+          <div class="hud-metric-row">
+            <span class="hud-key">CAM STAT</span>
+            <span class="hud-val" id="cam-status">OFF</span>
+          </div>
+          <div class="hud-metric-row">
+            <span class="hud-key">MODE STATE</span>
+            <span class="hud-val accent glow-text" id="mode-display">—</span>
+          </div>
+
+          <div class="hud-divider"></div>
+
+          <!-- MOTEUR INTEGRATION CLOUD ET RAPPORTS -->
+          <div class="hud-metric-row mt-2">
+            <span class="hud-key">CORE AI</span>
+            <span class="hud-val mono small text-right" id="model-name">GEMINI 2.5</span>
+            <button class="gear-btn" onclick="toggleProviderSelector()" title="Changer de modèle">⚙</button>
+          </div>
+          <div class="hud-metric-row">
+            <span class="hud-key">MOTEUR</span>
+            <span class="hud-val status-ok" id="api-status">
+              <span class="dot dot-offline"></span>CONNEXION...
+            </span>
+          </div>
+          <div class="hud-metric-row">
+            <span class="hud-key">PING RT</span>
+            <span class="hud-val mono small" id="latency-display">—</span>
+          </div>
+
+          <div class="hud-divider"></div>
+
+          <!-- REGLAGES ET TESTS VOCAUX (SPEECH PLAYBACK & TEST SUITE) -->
+          <div class="hud-section-title">TESTS & RETOUR VOCAL</div>
+          <div class="voice-test-controls">
+            <div class="hud-metric-row mb-2" style="background: none; border: none; margin-bottom: 8px;">
+              <span class="hud-key">LECTURE VOCALE IA</span>
+              <label class="hud-switch">
+                <input type="checkbox" id="voice-synthesis-toggle" checked onchange="toggleVoiceSynthesis()">
+                <span class="hud-switch-slider"></span>
+              </label>
+            </div>
+            
+            <div class="voice-slider-group">
+              <div class="slider-row">
+                <span class="small-key">VITESSE</span>
+                <input type="range" id="voice-rate" min="0.5" max="2" step="0.1" value="1.0" class="hud-range" oninput="document.getElementById('voice-rate-val').textContent = Number(this.value).toFixed(1)">
+                <span class="slider-val mono" id="voice-rate-val">1.0</span>
+              </div>
+              <div class="slider-row">
+                <span class="small-key">PITCH</span>
+                <input type="range" id="voice-pitch" min="0.5" max="2" step="0.1" value="1.0" class="hud-range" oninput="document.getElementById('voice-pitch-val').textContent = Number(this.value).toFixed(1)">
+                <span class="slider-val mono" id="voice-pitch-val">1.0</span>
+              </div>
+              <div class="slider-row select-row">
+                <span class="small-key">VOIX IA</span>
+                <select id="voice-select" class="hud-select" onchange="updateSelectedVoice()">
+                  <option value="default">Par défaut (Français)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="voice-btn-row">
+              <button class="test-voice-btn" onclick="testJarvisVoice()"><span class="play-icon">▶</span> SYNTÈSE</button>
+              <button class="test-voice-btn" onclick="openVoiceSimSelector()"><span class="mic-icon">🎤</span> SIMULER</button>
+            </div>
+          </div>
+
+          <div class="hud-divider"></div>
+
+          <!-- LOGS D'ACTIONS COGNITVES DIRECTES (SYSTEM ACTIONS) -->
+          <div class="hud-section-title">COGNITIVE ACTION FLOW</div>
+          <div class="hud-log-feed" id="hud-system-logs">
+            <div class="log-line"><span class="log-ts">[19:38]</span> <span class="tag-sys">CORE</span> JARVIS orchestrator online</div>
+            <div class="log-line"><span class="log-ts">[19:38]</span> <span class="tag-vad">VAD</span> Ambient detection daemon activated</div>
+            <div class="log-line"><span class="log-ts">[19:39]</span> <span class="tag-int">EXEC</span> Open Interpreter command engine ready</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= COMPARTIMENT CENTRAL (ORBE ET CHAT) ================= -->
+      <section class="hud-center-workspace">
+        <div class="grid-crosshair"></div>
+
+        <!-- LE GRAND ORBE JARVIS (OPTIMISÉ HAUTE FIDÉLITÉ) -->
+        <div id="jarvis-orb" class="mode-center">
+          <div class="orb-outer-scope"></div>
+          <div class="orb-bloom"></div>
+          <svg class="orb-svg" viewBox="0 0 200 200">
+            <!-- Rayons cyber vectoriels -->
+            <line class="marker" x1="100" y1="4" x2="100" y2="18"/>
+            <line class="marker" x1="100" y1="182" x2="100" y2="196"/>
+            <line class="marker" x1="4" y1="100" x2="18" y2="100"/>
+            <line class="marker" x1="182" y1="100" x2="196" y2="100"/>
+            
+            <!-- Anneaux d'analyses techniques synchronisés (Rotation CSS) -->
+            <circle class="ring r1" cx="100" cy="100" r="92" stroke-dasharray="8 6" stroke-width="0.8"/>
+            <circle class="ring r4" cx="100" cy="100" r="84" stroke-dasharray="30 180 50 20" stroke-width="0.6"/>
+            <circle class="ring r2" cx="100" cy="100" r="74" stroke-dasharray="160 30 50 40" stroke-width="1.8"/>
+            <circle class="ring r3" cx="100" cy="100" r="62" stroke-dasharray="5 10" stroke-width="0.8"/>
+            
+            <!-- Coeur glowing principal -->
+            <circle class="core-ring" cx="100" cy="100" r="42" stroke-width="1"/>
+            <circle class="core-fill" cx="100" cy="100" r="36"/>
+            <ellipse class="core-shine" cx="93" cy="91" rx="12" ry="7"/>
+          </svg>
+          <div class="orb-text">JARVIS</div>
+        </div>
+
+        <!-- SPECTROMÈTRE / WAVEFORM VOCAL PULSANT -->
+        <canvas id="waveform-canvas"></canvas>
+
+        <!-- ESPACE DE CONVERSATION ÉLÉGANT ET SCI-FI -->
+        <div id="chat-zone">
+          <div class="msg-system">INITIALISATION DE LA LIAISON SCI-FI... READY</div>
+        </div>
+
+        <!-- CHASSIS FLOTTEUR D'ENTRÉE DES COMMANDES -->
+        <div id="input-row">
+          <div class="input-glow-bar"></div>
+          <input type="text" id="text-input" placeholder="Parlez ou tapez une directive pour l'ordinateur..." autocomplete="off" spellcheck="false">
+          <button id="send-btn" onclick="handleInputSend()">EXECUTE ↵</button>
+        </div>
+      </section>
+
+      <!-- ================= PANNEAU OUTILS ET APERCUS DROIT ================= -->
+      <section class="hud-panel hud-right-panel">
+        <div class="hud-panel-header">
+          <div class="hud-panel-title">EXECUTION_WORKSPACE</div>
+          <button class="panel-close-btn" onclick="hideWorkspacePanel()" title="Replier le panneau (Espace libre)">✕</button>
+        </div>
+
+        <div class="hud-panel-body">
+          <!-- FLUX VIDÉO CAPTURE DU VAD / SENSORS -->
+          <div class="hud-section-title">TACTICAL WEBCAM VIEW</div>
+          <div id="camera-feed">
+            <video id="camera-video" autoplay muted playsinline></video>
+            <div class="cam-overlay">
+              <div class="cam-corner cam-tl"></div>
+              <div class="cam-corner cam-tr"></div>
+              <div class="cam-corner cam-bl"></div>
+              <div class="cam-corner cam-br"></div>
+              <div class="cam-scanline"></div>
+              <span class="cam-label">PRIMARY WEBCAM HUD [30 FPS]</span>
+              <button class="cam-close" onclick="toggleCamera()">✕</button>
+            </div>
+          </div>
+
+          <!-- TERMINAL D'EXÉCUTION NATIVE (OPEN INTERPRETER OUTPUT) -->
+          <div class="hud-section-title mt-2">OPEN INTERPRETER SHELL</div>
+          <div class="code-terminal-wrapper">
+            <div class="code-terminal-header">
+              <span class="term-pin glow-green"></span>
+              <span class="term-lbl">CORE PYTHON EXECUTOR</span>
+              <span class="term-file">sandbox_engine.py</span>
+            </div>
+            <pre class="code-terminal-body" id="code-terminal-body"># J.A.R.V.I.S Engine Console
+# En attente d'une directive...
+# Les scripts s'exécuteront ici.
+</pre>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- FENÊTRE FLOTTANTE DE CHOIX DES MODÈLES (POPOVER) -->
     <div id="provider-selector">
       <div class="provider-header">
-        <span>SÉLECTION DU MODÈLE IA</span>
+        <span>SÉLECTION DU MOTEUR IA</span>
         <button onclick="toggleProviderSelector()" class="close-btn">✕</button>
       </div>
       <div id="provider-list"></div>
-      <div class="provider-section-title">OLLAMA LOCAL</div>
-      <div id="ollama-list"><span class="provider-none">Ollama non détecté</span></div>
+      <div class="provider-section-title">LOCAL CLI / EXECUTIONS</div>
+      <div id="ollama-list"><span class="provider-none">Moteurs locaux indétectés</span></div>
     </div>
 
-    <!-- CHAT ZONE -->
-    <div id="chat-zone"></div>
+    <!-- BANQUE DE SIMULATIONS DE DIRECTIVES VOCALES (POPOVER CHASSIS) -->
+    <div id="voice-simulator-panel" style="position: fixed; top: 120px; left: 340px; background: rgba(1, 8, 22, 0.99); border: 1px solid var(--cyan-border); border-radius: var(--radius); padding: 0; width: 330px; max-height: calc(100vh - 160px); overflow-y: auto; display: none; z-index: 501; box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 25px rgba(0, 243, 255, 0.12); backdrop-filter: blur(18px);">
+      <div class="provider-header" style="border-bottom: 1px solid var(--border-dim);">
+        <span>SIMULATION DE RECONNAISSANCE</span>
+        <button onclick="closeVoiceSimSelector()" class="close-btn">✕</button>
+      </div>
+      <div class="provider-section-title">COMMANDES HUD ORDINAIRES</div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, lance un diagnostic complet de l\'HUD')">
+        <span>⚙ Diagnostic global</span><span class="provider-badge badge-local" style="font-size: 8px;">TEST HUD</span>
+      </div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, montre les statistiques système')">
+        <span>⏣ Ressources système</span><span class="provider-badge badge-local" style="font-size: 8px;">STATS PY</span>
+      </div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, active la caméra d\'analyse tactique')">
+        <span>◎ Activer l\'optique caméra</span><span class="provider-badge badge-local" style="font-size: 8px;">CAMERA</span>
+      </div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, fais un test de débit internet et de statut réseau')">
+        <span>⇋ Analyse ping / réseaux</span><span class="provider-badge badge-local" style="font-size: 8px;">NET TEST</span>
+      </div>
 
-    <!-- INPUT MANUEL -->
-    <div id="input-row">
-      <input type="text" id="text-input" placeholder="Écris un message..." autocomplete="off" spellcheck="false">
-      <button id="send-btn" onclick="handleInputSend()">↵</button>
-    </div>
+      <div class="provider-section-title">RECHERCHES & COGNITION</div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, quel temps fait-il actuellement ?')">
+        <span>☼ Météo en direct</span><span class="provider-badge badge-free" style="font-size: 8px;">WIDGET</span>
+      </div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, cherche des infos wikipedia sur Alan Turing')">
+        <span>W Infos Wikipedia</span><span class="provider-badge badge-free" style="font-size: 8px;">OSINT</span>
+      </div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, cherche sur internet qui est Tony Stark ?')">
+        <span>⌕ Recherche de données</span><span class="provider-badge badge-paid" style="font-size: 8px;">CLOUD</span>
+      </div>
 
-    <!-- WAVEFORM -->
-    <canvas id="waveform-canvas"></canvas>
-
-    <!-- CAMÉRA -->
-    <div id="camera-feed">
-      <video id="camera-video" autoplay muted playsinline></video>
-      <div class="cam-overlay">
-        <div class="cam-corner cam-tl"></div>
-        <div class="cam-corner cam-tr"></div>
-        <div class="cam-corner cam-bl"></div>
-        <div class="cam-corner cam-br"></div>
-        <div class="cam-scanline"></div>
-        <span class="cam-label">VISION ACTIVE</span>
-        <button class="cam-close" onclick="toggleCamera()">✕</button>
+      <div class="provider-section-title">GENERATION DE CODE / EXÉCUTION</div>
+      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, écris un script python pour calculer la suite de Fibonacci et affiche les 10 premiers nombres')">
+        <span>∑ Générer / Lancer Fibonacci</span><span class="provider-badge badge-paid" style="font-size: 8px;">PYTHON</span>
       </div>
     </div>
 
-    <!-- ORBE JARVIS -->
-    <div id="jarvis-orb">
-      <div class="orb-bloom"></div>
-      <svg class="orb-svg" viewBox="0 0 200 200">
-        <!-- Anneau extérieur tirets -->
-        <circle class="ring r1" cx="100" cy="100" r="94"
-          stroke-dasharray="6 5" stroke-width="0.8"/>
-        <!-- Anneau milieu asymétrique -->
-        <circle class="ring r2" cx="100" cy="100" r="76"
-          stroke-dasharray="140 20 30 20" stroke-width="1.5"/>
-        <!-- Anneau intérieur -->
-        <circle class="ring r3" cx="100" cy="100" r="58"
-          stroke-dasharray="4 8" stroke-width="0.8"/>
-        <!-- Marqueurs cardinaux -->
-        <line class="marker" x1="100" y1="6" x2="100" y2="16"/>
-        <line class="marker" x1="100" y1="184" x2="100" y2="194"/>
-        <line class="marker" x1="6" y1="100" x2="16" y2="100"/>
-        <line class="marker" x1="184" y1="100" x2="194" y2="100"/>
-        <!-- Noyau -->
-        <circle class="core-ring" cx="100" cy="100" r="40" stroke-width="1"/>
-        <circle class="core-fill" cx="100" cy="100" r="34"/>
-        <!-- Reflet interne -->
-        <ellipse class="core-shine" cx="92" cy="90" rx="10" ry="6"/>
-      </svg>
-      <div class="orb-text">JARVIS</div>
-    </div>
-
-    <!-- PANNEAU OUTILS -->
-    <button id="tools-btn" onclick="toggleToolsPanel()" title="Outils">⊞</button>
+    <!-- BOUTON ACCORT DE DÉPLOIEMENT DES ACCÈS OUTILS -->
+    <button id="tools-btn" onclick="toggleToolsPanel()" title="HUD Tactical Tools">⊞</button>
     <div id="tools-panel">
-      <div class="tools-header">OUTILS</div>
+      <div class="tools-header">OUTILS TACTIQUES NATIVES</div>
       <div id="tools-grid"></div>
     </div>
 
-    <!-- STATUS BAR -->
-    <div id="status-bar">
+    <!-- STATUS BAR SUPÉRIEURE / PIED DE PAGE INFÉREUR -->
+    <footer id="status-bar">
       <div class="status-left">
         <span id="status-dot" class="dot dot-offline"></span>
         <span id="status-text">INITIALISATION</span>
       </div>
       <div class="status-center">
-        <span class="shortcut">ESPACE mic</span>
-        <span class="shortcut">C cam</span>
+        <span class="shortcut">ESPACE micro</span>
+        <span class="shortcut">C webcam</span>
         <span class="shortcut">N carte</span>
         <span class="shortcut">ESC stop</span>
-        <span class="shortcut highlight" id="browser-toggle" onclick="toggleBrowserView()" style="cursor:pointer; color:var(--cyan); border:1px solid var(--cyan); padding:2px 6px; border-radius:3px;">VIEW</span>
+        <span class="shortcut highlight" id="browser-toggle" onclick="toggleBrowserView()" style="cursor:pointer;">VIEW CHROME</span>
       </div>
       <div class="status-right mono" id="status-time">00:00</div>
-    </div>
+    </footer>
 
   </div>
 
-  <!-- LOADER INITIAL -->
+  <!-- ÉCRAN D'INITIALISATION INITIAL (BOOT DECK) -->
   <div id="boot-screen">
     <div class="boot-content">
       <div class="boot-orb-mini"></div>
       <div class="boot-text">J.A.R.V.I.S</div>
-      <div class="boot-sub">INITIALISATION DU SYSTÈME...</div>
+      <div class="boot-sub">SYNCHRONISATION DES CAPTEURS TACTIQUES...</div>
       <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
     </div>
   </div>
