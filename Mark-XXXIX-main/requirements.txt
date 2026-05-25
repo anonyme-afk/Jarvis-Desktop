@@ -43,3 +43,11 @@ langchain-community
 browser-use
 crewai-tools
 smolagents
+shodan
+scapy
+mediapipe
+geopy
+pytesseract
+cryptography
+python-nmap
+

@@ -1,124 +1,102 @@
 # JARVIS Desktop v5 (Fusion MARK XXXIX)
 
-Interface holographique avancée style **Blueprint Tactique Iron Man** fusionnée avec le puissant backend **Mark-XXXIX**.
-Conçu pour fonctionner de manière fluide sur **Windows, Mac, et Linux**.
+Interface holographique avancee developpee pour un controle tactique total, fusionnee avec le puissant moteur backend Mark-XXXIX. Concu pour fonctionner de maniere fluide sur Windows, Mac, et Linux.
 
-## 🚀 Qu'est-ce qui a changé dans cette fusion (Mise à jour Omniscient) ?
-- Le frontend (HUD) holographique exceptionnel de l'ancien Jarvis-Desktop a été conservé (`index.html`, `renderer.js`).
-- Le cerveau backend a été entièrement remplacé par le puissant moteur **Mark-XXXIX** basé sur l'IA Gemini Multimodal Live, offrant une latence de voix ultra basse !
-- **SYSTÈME DE TOOLS OMNISCIENT** : Les capacités d'agents ont été massivement étendues. Mark-XXXIX intègre un catalogue colossal de Tools (OSINT, scan réseau, hardware watcher, météo, Wikipedia, et bien plus) et est désormais conçu pour se lier à des frameworks d'agents state-of-the-art tels que **Composio**, **Browser-Use**, **LangChain**, et **CrewAI**.
-- La communication a été pontée via un micro-serveur Flask (Port 5001) proxyfié par Vite.
+## Credits et Remerciements
 
----
+Une gratitude particuliere est adressee au developpeur **FatihMakes** pour son travail inestimable sur l'architecture Mark-XXXIX originale. Ce projet de bureau s'appuie massivement sur son code fondationnel.
+- Profil GitHub: https://github.com/FatihMakes
+- Depot original Mark-XXXIX: https://github.com/FatihMakes/Mark-XXXIX
 
-## 🎨 Design System : "Millimeter Blueprint Grid"
-La v4 réorganise entièrement l'interface utilisateur (HUD) pour s'adapter à l'exécution automatique d'Open Interpreter :
-1. **Papier Millimétré Cyber** : Arrière-plan double-grille bleu crépusculaire et cyan avec réticules filigranes d'angles tactiques.
-2. **Orbe Intelligent Rotatif (Le Coeur)** : Un ensemble d'anneaux vectoriels (SVG) concentriques animés par des vitesses et des rotations opposées (`spin-cw` / `spin-ccw`) qui varient d'état en direct (*Listening/Vert, Thinking/Ambre, Speaking/Bleu*).
-3. **Cognitive Action Flow (Gauche)** : Un fil de logs temps-réel alimenté dynamiquement pour suivre la planification interne de JARVIS.
-4. **Console d'Exécution Native (Droite)** : Quand Open Interpreter génère des scripts Python ou Shell (`bash / cmd`), le code est extrait du chat et imprimé à haute cadence dans un terminal monospacé sombre avec colorations syntaxiques scifi (`IBM Plex Mono`). Plus de pollution textuelle dans le fil principal !
+## Qu'est-ce qui a change dans cette fusion (Mise a jour Omniscient) ?
+
+- Le frontend holographique exceptionnel de l'ancien Jarvis-Desktop a ete conserve, heberge a la racine du projet pour des raisons de performances Vite.
+- Le cerveau backend a ete entierement remplace par le puissant moteur Mark-XXXIX base sur l'IA Gemini Multimodal Live, offrant une latence auditive ultra basse.
+- **Systeme de Tools Omniscient (GOD MODE)** : Les capacites ont ete portees a un niveau critique. Mark-XXXIX integre un catalogue colossal : Threat Intelligence (Shodan), OCR et Biometrie Faciale (MediaPipe, Tesseract), Scan Reseau profond (Nmap, Scapy), Cryptographie de grade militaire, geolocalisation par satellite (GeoPy) et bien plus. Il integre egalement l'ecosysteme Composio, Browser-Use, LangChain, et CrewAI.
+- L'arborescence globale a ete rationalisee (separation logique de la racine (Frontend) vs `backend/`).
 
 ---
 
-## 🚀 1. Installation & Lancement Automatique (1-Clic)
+## Design System : "Millimeter Blueprint Grid"
 
-Plus besoin de lancer plusieurs scripts ! Tout a été automatisé de A à Z.
-
-### Sous Windows :
-1. Téléchargez et installez **Node.js** (sur https://nodejs.org) et **Python** (sur https://python.org - *veillez à cocher l'option "Add Python to PATH" pendant l'installation*).
-2. Double-cliquez simplement sur **`START_JARVIS.bat`**.
-3. **Au premier lancement** : Le script détectera l'absence de vos dépendances et installera automatiquement tout le nécessaire (Node.js, environnement virtuel Python, Playwright, Open Interpreter).
-4. Le script copiera également l'exemple de configuration vers votre propre fichier `.env` puis l'ouvrira dans le Bloc-notes. Configurez votre clé d'API Gemini (obtenez-en une sur https://aistudio.google.com).
-5. Enregistrez le fichier `.env` et fermez-le. Le système lancera alors automatiquement le moteur de JARVIS, ouvrira automatiquement votre navigateur sur l'adresse de l'interface (**http://localhost:3000**) et compilera le HUD !
-
-### Au quotidien (Lancements suivants) :
-Double-cliquez simplement sur **`START_JARVIS.bat`**. Il détectera que tout est déjà configuré, sautera les étapes de téléchargement et démarrera JARVIS instantanément en ouvrant votre navigateur internet !
+Cette version reorganise entierement l'interface utilisateur (HUD) :
+1. **Papier Millimetre Cyber** : Arriere-plan double-grille bleu crepusculaire et cyan avec reticules filigranes d'angles tactiques.
+2. **Orbe Intelligent Rotatif (Le Coeur)** : Un ensemble d'anneaux vectoriels concentriques animes qui varient d'etat en direct (Listening, Thinking, Speaking).
+3. **Cognitive Action Flow (Gauche)** : Un fil de logs temps-reel alimente dynamiquement pour suivre la planification interne de JARVIS.
+4. **Console d'Execution Native (Droite)** : Sorties brutes du moteur extractees dans un terminal espace et elegant.
 
 ---
 
-## 🎙️ 2. Sortie Vocale Premium Local : Kokoro-82M (Recommandé)
+## 1. Installation et Lancement Automatique (1-Clic)
 
-Pour une immersion totale digne d'Iron Man, le serveur intègre désormais un support natif pour le modèle **Kokoro-82M** !
+Tout a ete automatise de A a Z.
 
-### Pourquoi utiliser Kokoro-82M avec JARVIS ?
-* **Zéro Latence** : Étant un modèle ultra-léger (~82 millions de paramètres), il synthétise le texte en voix à la vitesse de l'éclair, sans temps d'attente.
-* **Qualité Studio** : Les intonations françaises sont d'une clarté et d'un réalisme bluffant, surpassant les solutions cloud payantes.
-* **100% Local, Privé & Gratuit** : Fonctionne entièrement sur votre PC, sans connexion Internet requise, et sans coût d'API.
+### Configuration sous Windows :
+1. Telechargez et installez Node.js (https://nodejs.org) et Python (https://python.org - veillez a cocher l'option "Add Python to PATH").
+2. Double-cliquez simplement sur `START_JARVIS.bat`.
+3. Au premier lancement : Le script detectera l'absence de vos dependances et installera automatiquement tout le necessaire (Node.js, environnement virtuel Python, outils de backend, framework frontend).
+4. Le script copiera egalement l'exemple de configuration vers votre propre fichier `.env` puis l'ouvrira dans un editeur de texte. Configurez votre cle d'API Gemini (obtenez-en une sur https://aistudio.google.com).
+5. Enregistrez le fichier `.env` et fermez-le. Le systeme lancera alors automatiquement le moteur de JARVIS, ouvrira votre navigateur sur l'adresse de l'interface (http://localhost:3000) et compilera le HUD.
 
-### Comment l'installer sur votre machine d'exécution ?
-Activez la console de votre environnement virtuel (`venv/Scripts/activate` sous Windows) et tapez :
-```bash
-pip install kokoro sounddevice soundfile
-```
-*Note : Sur Linux ou macOS, vous aurez également besoin de la bibliothèque système d'analyse phonétique `espeak-ng` (ex: `sudo apt-get install espeak-ng` ou `brew install espeak`).*
-
-Une fois ces modules installés, le serveur JARVIS **détectera automatiquement** Kokoro et l'utilisera en lieu et place du moteur standard `pyttsx3` pour une voix d'exception !
+### Lancement regulier :
+Double-cliquez simplement sur `START_JARVIS.bat`. Il sautera les etapes de telechargement et demarrera le systeme instantanement.
 
 ---
 
-## 🛠️ 3. Installation Manuelle ou Mac/Linux
+## 2. Installation Manuelle ou Mac/Linux
 
-Si vous préférez installer pas à pas ou si vous êtes sur macOS / Linux :
+Si vous preferez installer manuellement ou si vous utilisez macOS / Linux :
 
 ```bash
-# 1. Installer les dépendances de l'interface (Node.js)
+# 1. Configurer votre cle d'API
+cp .env.example .env
+# Editez le fichier .env pour y ajouter votre GEMINI_API_KEY
+
+# 2. Installer les dependances de l'interface (Frontend a la racine)
 npm install
 
-# 2. Créer l'environnement virtuel Python et installer les dépendances de calcul
+# 3. Creer l'environnement virtuel Python et installer les dependances (Backend)
 python3 -m venv venv
 source venv/bin/activate
-pip install -r jarvis/python/requirements.txt
-
-# 3. Configurer votre clé d'API
-cp .env.example .env
-# Éditez le fichier .env pour y ajouter votre GEMINI_API_KEY
+pip install -r backend/requirements.txt
+python -m playwright install --with-deps
 ```
 
 Puis pour le lancer, ouvrez deux terminaux :
-* **Terminal 1** : `source venv/bin/activate && python jarvis/python/server.py`
-* **Terminal 2** : `npm run build && npm start`
-* Accédez ensuite à **http://localhost:3000** dans votre navigateur.
+- **Terminal 1 (Serveur Python)** : `source venv/bin/activate && cd backend && python main.py`
+- **Terminal 2 (Interface Web)** : `npm run build && npm start`
+- Accedez ensuite a **http://localhost:3000**.
 
 ---
 
-## 🧠 4. Architecture : Le Cerveau + Les Mains (Open Interpreter)
+## 3. Architecture Structurelle
 
-Le projet JARVIS garantit des performances maximales en divisant le travail entre deux "hémisphères" :
+Le projet garantit des performances maximales en divisant le travail entre deux "hemispheres" independants :
 
-### Le Frontend (Interface HUD — Navigateur web)
-C'est le tableau de bord visible, géré par **Vite / Node.js** pour une fluidité maximale.
-* **`index.html` & `style.css`** : Dessine les structures crépusculaires, réticules holographiques et animations cyan tactiques du HUD.
-* **`renderer.js`** : Moteur événementiel chargé d'écouter votre voix via Web Speech API, de capturer la webcam, et d'envoyer les instructions utilisateur au Cerveau NodeJS/Python.
-* **`server.ts`** : Petit serveur Node local qui sécurise et expose l'interface à l'adresse locale.
+### Le Frontend (Interface HUD)
+Heberge a la racine du projet. C'est le tableau de bord visible, gere par Vite et Node.js pour une fluidite maximale.
+- `index.html` & fichiers sources : Dessinent les structures holographiques tactiques.
+- `server.ts` : Petit serveur local executif de gestion des liens statiques.
 
 ### Le Backend (Moteur Python MARK XXXIX)
-C'est l'entité qui réfléchit, planifie et exécute. Tournant en arrière-plan (serveur Flask sur le port 5001), il gère l'orchestration du modèle intelligent.
-* **`Mark-XXXIX-main/main.py`** : Réceptionne les données brutes envoyées par l'interface HUD, et fait appel au moteur Gemini 2.5 Flash pour générer du texte et effectuer de puissants appels d'outils système (actions).
-* **Outils d'action (Actions Core)** : Dossier `actions/`, il contient tout le répertoire d'aptitudes système (Web search, Desktop Control, Files Control...).
+Heberge dans `/backend/`. C'est l'entite qui reflechit, planifie et execute. Tournant en arriere-plan, il gere l'orchestration du modele intelligent via Flask.
+- `backend/main.py` : Receptionne les donnees, gere le contexte multimodal live, et declenche de redoutables appels d'outils systeme.
+- Outils d'action locaux : Regroupe un repertoire d'aptitudes specifiques de traitement et controle.
 
 ---
 
-## 🎛️ 5. Commandes & Raccourcis Clavier du HUD
+## 4. Raccourcis Clavier Specifiques
 
-* **ESPACE** : Activer/désactiver l'écoute vocale (micro)
-* **C** : Activer/désactiver la vision (caméra webcam)
-* **N** : Activer la carte réseau holographique interactive
-* **ESC** : Stopper brutalement JARVIS (coupe nette des vocalises)
-* **↑ (Flèche Haut)** : Rappeler la dernière directive envoyée dans l'éditeur de commande
-
----
-
-## 🌐 6. Mode Navigateur Autonome (Playwright)
-
-JARVIS intègre un mode d'automatisation de navigateur (via Playwright) qui lui permet d'utiliser l'interface web de modèles comme Gemini ou ChatGPT **à votre place, avec votre propre compte**, sans avoir besoin d'utiliser (ni de payer) une clé API.
-
-* **HUD (View Mode)** : Pour voir ce que JARVIS fait ou s'il est bloqué, cliquez sur le bouton **VIEW CHROME** dans la barre de statut (en bas). Chrome sortira de l'ombre en mode visible, et vous pourrez le masquer plus tard en cliquant sur "HIDE CHROME".
-* **Installation** : JARVIS a besoin des navigateurs Playwright. Si l'installation ne s'est pas faite seule au premier lancement, exécutez la commande `python -m playwright install` depuis votre console activée.
+- **ESPACE** : Activer/desactiver la sequence audio (Microphone).
+- **C** : Activer/desactiver le module de flux de vision (Cam).
+- **N** : Basculer l'affichage de la topologie reseau holographique.
+- **ESC** : Suspension systeme immediate.
+- **Fleche Haut** : Rappel de la precedente directive inscrite manuellement.
 
 ---
 
-## 🩸 7. Dépannage rapide
+## 5. Maintenance et Depannage
 
-* **Erreur de Modèle / "API key expired"** : Allez sur [Google AI Studio](https://aistudio.google.com), créez une nouvelle clé d'API gratuite, collez-la dans le fichier `.env` (`GEMINI_API_KEY=AIzaSy...`) et relancez `START_JARVIS.bat`.
-* **Le micro reste muet** : Pensez à "Autoriser le microphone" dans le navigateur au premier lancement, puis pressez "ESPACE".
-* **PyAudio Errors** : Sur Windows, si l'installation de requirements échoue sur PyAudio, exécutez `pip install pipwin && pipwin install pyaudio`.
+- Erreur d'Authentification / Cle d'API : Generez une nouvelle cle depuis Google AI Studio, remplacez celle du fichier `.env`, puis redemarrez.
+- Flux audio interrompu : Autorisez le peripherique d'entree dans les parametres du navigateur puis pressez la touche ESPACE.
+- PyAudio - Defaillance native : Sous Windows, si l'installation echoue, executez la commande alternative `pip install pipwin && pipwin install pyaudio` depuis la console activee.

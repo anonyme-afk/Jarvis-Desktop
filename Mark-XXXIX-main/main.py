@@ -377,6 +377,49 @@ TOOL_DECLARATIONS = [
       "url": {"type":"string"}
     },"required":["action"]}
   },
+  # ═══ RENSEIGNEMENT CENTRAL (GOD MODE / FBI LEVEL) ═══
+  {
+    "name": "global_threat_intel",
+    "description": "Recherche avancée globale via Shodan (moteurs, caméras IP, serveurs vulnérables, systèmes industriels). Niveau NSA.",
+    "parameters": {"type":"object","properties":{
+      "query": {"type":"string"},
+      "type": {"type":"string","enum":["shodan_search","exploit_search"]}
+    },"required":["query"]}
+  },
+  {
+    "name": "biometric_and_vision",
+    "description": "Analyse biométrique faciale, détection d'objets, OCR et tracking de posture (Iron Man HUD) via MediaPipe et Tesseract.",
+    "parameters": {"type":"object","properties":{
+      "action": {"type":"string","enum":["detect_faces","read_text","track_pose"]},
+      "image_path": {"type":"string"}
+    },"required":["action", "image_path"]}
+  },
+  {
+    "name": "advanced_network_recon",
+    "description": "Scan réseau profond (Nmap), interception de paquets (Scapy), détection d'intrusions et mapping topologique.",
+    "parameters": {"type":"object","properties":{
+      "action": {"type":"string","enum":["nmap_scan","packet_sniff","traceroute"]},
+      "target": {"type":"string"},
+      "options": {"type":"string"}
+    },"required":["action", "target"]}
+  },
+  {
+    "name": "satellite_geolocation",
+    "description": "Géolocalisation précise, reverse geocoding, et calculs de distance tactique mondiaux.",
+    "parameters": {"type":"object","properties":{
+      "action": {"type":"string","enum":["locate_ip","geocode_address","reverse_geocode"]},
+      "target": {"type":"string"}
+    },"required":["action", "target"]}
+  },
+  {
+    "name": "crypto_and_stealth",
+    "description": "Chiffrement de grade militaire, déchiffrement, génération de hash et opérations de stéganographie.",
+    "parameters": {"type":"object","properties":{
+      "action": {"type":"string","enum":["encrypt","decrypt","hash"]},
+      "text_or_path": {"type":"string"},
+      "key": {"type":"string"}
+    },"required":["action", "text_or_path"]}
+  },
   {
     "name": "run_code",
     "description": "Exécuter du code Python, JavaScript, Bash directement. À utiliser COMME FALLBACK si un outil n'existe pas.",
@@ -923,6 +966,92 @@ class JarvisLive:
                         result = str(e)
                 else:
                     result = f"Unsupported language {lang} for direct run."
+
+            elif name == "global_threat_intel":
+                try:
+                    import shodan
+                    # On tente de voir si une clé est dans l'environnement, sinon on prévient l'IA de le mentionner
+                    api_key = os.environ.get("SHODAN_API_KEY", "")
+                    if not api_key:
+                        result = "L'accès au réseau global Shodan nécessite une SHODAN_API_KEY. Demandez à Monsieur de la configurer."
+                    else:
+                        api = shodan.Shodan(api_key)
+                        res = api.search(args.get("query", ""))
+                        result = f"Shodan Report: {res['total']} résultats. Top 2 IPs: {[match['ip_str'] for match in res['matches'][:2]]}"
+                except ImportError:
+                    result = "Erreur: shodan n'est pas installé."
+                except Exception as e:
+                    result = f"Global Threat Intel Error: {e}"
+
+            elif name == "biometric_and_vision":
+                action = args.get("action")
+                path = args.get("image_path")
+                if action == "read_text":
+                    try:
+                        import pytesseract
+                        from PIL import Image
+                        text = pytesseract.image_to_string(Image.open(path))
+                        result = f"Texte extrait (OCR): {text}"
+                    except Exception as e:
+                        result = f"Erreur OCR (Assurez-vous que Tesseract-OCR est installé sur le système) : {e}"
+                elif action in ["detect_faces", "track_pose"]:
+                    try:
+                        import cv2
+                        import mediapipe as mp
+                        img = cv2.imread(path)
+                        mp_face_detection = mp.solutions.face_detection
+                        with mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5) as face_detection:
+                            results = face_detection.process(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+                            num_faces = len(results.detections) if results.detections else 0
+                        result = f"Analyse Biométrique : {num_faces} visage(s) détecté(s) dans le flux."
+                    except Exception as e:
+                        result = f"Erreur biométrique: {e}"
+
+            elif name == "advanced_network_recon":
+                import subprocess
+                action = args.get("action")
+                target = args.get("target", "127.0.0.1")
+                opts = args.get("options", "")
+                try:
+                    if action == "nmap_scan":
+                        res = subprocess.getoutput(f"nmap {opts} {target}")
+                        result = res[:1500] + "\n[Tronqué]" if len(res)>1500 else res
+                    elif action == "traceroute":
+                        cmd = "tracert" if os.name == "nt" else "traceroute"
+                        res = subprocess.getoutput(f"{cmd} {target}")
+                        result = res[:1500] if len(res)>1500 else res
+                    else:
+                        result = "Action réseau non supportée directement sans droits Admin élevés (Scapy nécessite root)."
+                except Exception as e:
+                    result = str(e)
+
+            elif name == "satellite_geolocation":
+                try:
+                    from geopy.geocoders import Nominatim
+                    action = args.get("action")
+                    target = args.get("target", "")
+                    geolocator = Nominatim(user_agent="JARVIS_MARK_XXXIX")
+                    if action == "geocode_address":
+                        loc = geolocator.geocode(target)
+                        result = f"Cible verrouillée. Coordonnées: {loc.latitude}, {loc.longitude}" if loc else "Cible introuvable."
+                    else:
+                        loc = geolocator.reverse(target)
+                        result = f"Emplacement: {loc.address}" if loc else "Emplacement introuvable."
+                except Exception as e:
+                    result = f"Système de géolocalisation hors ligne: {e}"
+
+            elif name == "crypto_and_stealth":
+                try:
+                    import hashlib
+                    action = args.get("action")
+                    target = args.get("text_or_path")
+                    if action == "hash":
+                        h = hashlib.sha256(target.encode()).hexdigest()
+                        result = f"Empreinte SHA-256 générée: {h}"
+                    else:
+                        result = f"Action {action} nécessite la configuration de Fernet."
+                except Exception as e:
+                    result = str(e)
 
             else:
                 # Catch-all

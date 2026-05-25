@@ -66,7 +66,7 @@ if not exist venv (
     echo [Setup] Installation des extensions et modules requis pour l'IA...
     call venv\Scripts\activate
     python -m pip install --upgrade pip setuptools wheel --quiet
-    pip install -r Mark-XXXIX-main\requirements.txt Flask flask-cors
+    pip install -r backend\requirements.txt Flask flask-cors
     echo [Setup] Installation des navigateurs pour Browser-Use / Playwright...
     python -m playwright install --with-deps
     if %errorlevel% neq 0 (
@@ -93,7 +93,7 @@ if not exist .env (
 :: 5. Lancement des serveurs
 echo.
 echo [1/2] Demarrage du Moteur Python (Flask sur le port 5001)...
-start "JARVIS-Flask" cmd /k "title JARVIS Moteur Python && call venv\Scripts\activate && cd Mark-XXXIX-main && python main.py"
+start "JARVIS-Flask" cmd /k "title JARVIS Moteur Python && call venv\Scripts\activate && cd backend && python main.py"
 
 echo [2/2] Demarrage de l'Interface Visuelle (HUD)...
 timeout /t 2 /nobreak >nul
