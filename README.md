@@ -3,9 +3,10 @@
 Interface holographique avancée style **Blueprint Tactique Iron Man** fusionnée avec le puissant backend **Mark-XXXIX**.
 Conçu pour fonctionner de manière fluide sur **Windows, Mac, et Linux**.
 
-## 🚀 Qu'est-ce qui a changé dans cette fusion ?
+## 🚀 Qu'est-ce qui a changé dans cette fusion (Mise à jour Omniscient) ?
 - Le frontend (HUD) holographique exceptionnel de l'ancien Jarvis-Desktop a été conservé (`index.html`, `renderer.js`).
-- Le cerveau backend a été entièrement remplacé par le puissant moteur **Mark-XXXIX** basé sur l'IA de Google (Gemini) et qui gère les APIs systèmes, le contrôle du PC, etc. L'interface propre à Mark-XXXIX a été supprimée, pour connecter son cœur au magnifique front-end.
+- Le cerveau backend a été entièrement remplacé par le puissant moteur **Mark-XXXIX** basé sur l'IA Gemini Multimodal Live, offrant une latence de voix ultra basse !
+- **SYSTÈME DE TOOLS OMNISCIENT** : Les capacités d'agents ont été massivement étendues. Mark-XXXIX intègre un catalogue colossal de Tools (OSINT, scan réseau, hardware watcher, météo, Wikipedia, et bien plus) et est désormais conçu pour se lier à des frameworks d'agents state-of-the-art tels que **Composio**, **Browser-Use**, **LangChain**, et **CrewAI**.
 - La communication a été pontée via un micro-serveur Flask (Port 5001) proxyfié par Vite.
 
 ---

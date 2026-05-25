@@ -38,3 +38,8 @@ python-docx
 reportlab
 gitpython
 speedtest-cli
+composio-core
+langchain-community
+browser-use
+crewai-tools
+smolagents

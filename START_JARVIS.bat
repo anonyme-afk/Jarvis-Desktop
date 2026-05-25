@@ -67,6 +67,8 @@ if not exist venv (
     call venv\Scripts\activate
     python -m pip install --upgrade pip setuptools wheel --quiet
     pip install -r Mark-XXXIX-main\requirements.txt Flask flask-cors
+    echo [Setup] Installation des navigateurs pour Browser-Use / Playwright...
+    python -m playwright install --with-deps
     if %errorlevel% neq 0 (
         echo [ERREUR] Erreur lors de l'installation de requirements.txt.
         pause
