@@ -202,6 +202,82 @@ async function startServer() {
     }
   });
 
+  // Proxy status
+  app.get("/api/status", async (req, res) => {
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/status');
+      const data = await response.json();
+      res.json(data);
+    } catch (e) {
+      res.json({ listening: false, speaking: false, muted: true });
+    }
+  });
+
+  // Proxy mute toggles
+  app.post("/api/toggle-mute", async (req, res) => {
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/toggle-mute', { method: 'POST' });
+      const data = await response.json();
+      res.json(data);
+    } catch (e) {
+      res.json({ success: true, muted: true });
+    }
+  });
+
+  app.post("/api/mute", async (req, res) => {
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/mute', { method: 'POST' });
+      const data = await response.json();
+      res.json(data);
+    } catch (e) {
+      res.json({ success: true, muted: true });
+    }
+  });
+
+  app.post("/api/unmute", async (req, res) => {
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/unmute', { method: 'POST' });
+      const data = await response.json();
+      res.json(data);
+    } catch (e) {
+      res.json({ success: true, muted: false });
+    }
+  });
+
+  // Proxy events stream
+  app.get("/api/events", async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    try {
+      const response = await fetch('http://127.0.0.1:5001/api/events');
+      if (response.body) {
+        // @ts-ignore
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        const push = async () => {
+          try {
+            const { done, value } = await reader.read();
+            if (done) { res.end(); return; }
+            res.write(decoder.decode(value));
+            push();
+          } catch(err) {
+            res.end();
+          }
+        };
+        push();
+        return;
+      }
+    } catch(e) {
+      let interval = setInterval(() => {
+        res.write(':\\n\\n'); // Keep-alive comment
+      }, 5000);
+      req.on('close', () => clearInterval(interval));
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

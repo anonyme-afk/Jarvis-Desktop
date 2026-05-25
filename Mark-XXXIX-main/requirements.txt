@@ -1,4 +1,4 @@
-﻿sounddevice
+sounddevice
 google-genai
 google-generativeai
 pillow
@@ -22,3 +22,19 @@ youtube-transcript-api
 pywinauto
 python-pptx
 pyqt6
+flask
+flask-cors
+pydirectinput
+pyserial
+yt-dlp
+python-whois
+dnspython
+apprise
+apscheduler
+wikipedia-api
+pandas
+openpyxl
+python-docx
+reportlab
+gitpython
+speedtest-cli
