@@ -3,308 +3,176 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JARVIS — Terminal Intelligent d'Exécution</title>
+  <title>JARVIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles/style.css">
 </head>
 <body>
-  <!-- EFFETS ET FILTRES D'AFFICHAGE HUD -->
-  <div class="scanlines"></div>
-  <div class="vignette"></div>
-  <div class="tech-crosshairs"></div>
+  <!-- FOND GRILLE MILLIMÈTRE -->
+  <div id="grid-bg"></div>
+  
+  <!-- CANVAS CARTE RÉSEAU (fond) -->
+  <canvas id="map-canvas"></canvas>
 
-  <!-- CANVAS ARRIÈRE-PLAN DU SÉLECTEUR RÉSEAU -->
-  <canvas id="network-canvas"></canvas>
-
-  <!-- CONTENEUR PRINCIPAL DU HUD -->
-  <div id="app" class="hud-layout">
-
-    <!-- BARRE TECHNIQUE SUPÉRIEURE (HEADER LINE) -->
-    <header class="hud-top-bar">
-      <div class="top-bar-left">
-        <span class="tech-tag glow-cyan">J.A.R.V.I.S // ENGINE 4.0</span>
-        <span class="tech-separator">|</span>
-        <button id="btn-toggle-telemetry" class="top-bar-btn glow-cyan" onclick="toggleTelemetryPanel()" title="Déployer / Replier le panneau SYS_TELEMETRY">[ TELEMETRY: DORMANT ]</button>
+  <!-- APP PRINCIPALE -->
+  <div id="app">
+    <!-- HUD HAUT GAUCHE -->
+    <div id="hud-left">
+      <div class="hud-row">
+        <span class="hl">SYS</span>
+        <span class="hv mono" id="h-time">00:00:00</span>
       </div>
-      <div class="top-bar-center">
-        <span class="hud-coordinate">LAT: 48.8566 / LON: 2.3522</span>
-        <span class="hud-ping-state glow-green">ONLINE CORE_CONNECT</span>
+      <div class="hud-row">
+        <span class="hl">MIC</span>
+        <span class="hv" id="h-mic">VEILLE</span>
       </div>
-      <div class="top-bar-right">
-        <button id="btn-toggle-workspace" class="top-bar-btn glow-cyan" onclick="toggleWorkspacePanel()" title="Déployer / Replier le panneau EXECUTION_WORKSPACE">[ WORKSPACE: DORMANT ]</button>
-        <span class="tech-separator">|</span>
-        <span class="tech-tag glow-cyan">COGNITIVE COMPUTE NODE</span>
+      <div class="hud-row">
+        <span class="hl">CAM</span>
+        <span class="hv" id="h-cam">OFF</span>
       </div>
-    </header>
-
-    <!-- ZONE CENTRALE DE TRAVAIL (BENTO WORKSPACE FRAME) -->
-    <main class="hud-main-workspace">
-
-      <!-- ================= PANNEAU SYSTÈME GAUCHE ================= -->
-      <section class="hud-panel hud-left-panel">
-        <div class="hud-panel-header">
-          <div class="hud-panel-title">SYS_TELEMETRY</div>
-          <button class="panel-close-btn" onclick="hideTelemetryPanel()" title="Replier le panneau (Espace libre)">✕</button>
-        </div>
-
-        <div class="hud-panel-body">
-          <!-- RANGÉES HUD ORIGINALES REGROUPÉES POUR LE STYLE -->
-          <div class="hud-metric-row">
-            <span class="hud-key">SYS TIME</span>
-            <span class="hud-val mono glow-text" id="sys-time">00:00:00</span>
-          </div>
-          <div class="hud-metric-row">
-            <span class="hud-key">MIC STAT</span>
-            <span class="hud-val glow-alert" id="mic-status">VEILLE</span>
-          </div>
-          <div class="hud-metric-row">
-            <span class="hud-key">CAM STAT</span>
-            <span class="hud-val" id="cam-status">OFF</span>
-          </div>
-          <div class="hud-metric-row">
-            <span class="hud-key">MODE STATE</span>
-            <span class="hud-val accent glow-text" id="mode-display">—</span>
-          </div>
-
-          <div class="hud-divider"></div>
-
-          <!-- MOTEUR INTEGRATION CLOUD ET RAPPORTS -->
-          <div class="hud-metric-row mt-2">
-            <span class="hud-key">CORE AI</span>
-            <span class="hud-val mono small text-right" id="model-name">GEMINI 2.5</span>
-            <button class="gear-btn" onclick="toggleProviderSelector()" title="Changer de modèle">⚙</button>
-          </div>
-          <div class="hud-metric-row">
-            <span class="hud-key">MOTEUR</span>
-            <span class="hud-val status-ok" id="api-status">
-              <span class="dot dot-offline"></span>CONNEXION...
-            </span>
-          </div>
-          <div class="hud-metric-row">
-            <span class="hud-key">PING RT</span>
-            <span class="hud-val mono small" id="latency-display">—</span>
-          </div>
-
-          <div class="hud-divider"></div>
-
-          <!-- REGLAGES ET TESTS VOCAUX (SPEECH PLAYBACK & TEST SUITE) -->
-          <div class="hud-section-title">TESTS & RETOUR VOCAL</div>
-          <div class="voice-test-controls">
-            <div class="hud-metric-row mb-2" style="background: none; border: none; margin-bottom: 8px;">
-              <span class="hud-key">LECTURE VOCALE IA</span>
-              <label class="hud-switch">
-                <input type="checkbox" id="voice-synthesis-toggle" checked onchange="toggleVoiceSynthesis()">
-                <span class="hud-switch-slider"></span>
-              </label>
-            </div>
-            
-            <div class="voice-slider-group">
-              <div class="slider-row">
-                <span class="small-key">VITESSE</span>
-                <input type="range" id="voice-rate" min="0.5" max="2" step="0.1" value="1.0" class="hud-range" oninput="document.getElementById('voice-rate-val').textContent = Number(this.value).toFixed(1)">
-                <span class="slider-val mono" id="voice-rate-val">1.0</span>
-              </div>
-              <div class="slider-row">
-                <span class="small-key">PITCH</span>
-                <input type="range" id="voice-pitch" min="0.5" max="2" step="0.1" value="1.0" class="hud-range" oninput="document.getElementById('voice-pitch-val').textContent = Number(this.value).toFixed(1)">
-                <span class="slider-val mono" id="voice-pitch-val">1.0</span>
-              </div>
-              <div class="slider-row select-row">
-                <span class="small-key">VOIX IA</span>
-                <select id="voice-select" class="hud-select" onchange="updateSelectedVoice()">
-                  <option value="default">Par défaut (Français)</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="voice-btn-row">
-              <button class="test-voice-btn" onclick="testJarvisVoice()"><span class="play-icon">▶</span> SYNTÈSE</button>
-              <button class="test-voice-btn" onclick="openVoiceSimSelector()"><span class="mic-icon">🎤</span> SIMULER</button>
-            </div>
-          </div>
-
-          <div class="hud-divider"></div>
-
-          <!-- LOGS D'ACTIONS COGNITVES DIRECTES (SYSTEM ACTIONS) -->
-          <div class="hud-section-title">COGNITIVE ACTION FLOW</div>
-          <div class="hud-log-feed" id="hud-system-logs">
-            <div class="log-line"><span class="log-ts">[19:38]</span> <span class="tag-sys">CORE</span> JARVIS orchestrator online</div>
-            <div class="log-line"><span class="log-ts">[19:38]</span> <span class="tag-vad">VAD</span> Ambient detection daemon activated</div>
-            <div class="log-line"><span class="log-ts">[19:39]</span> <span class="tag-int">EXEC</span> Open Interpreter command engine ready</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- ================= COMPARTIMENT CENTRAL (ORBE ET CHAT) ================= -->
-      <section class="hud-center-workspace">
-        <div class="grid-crosshair"></div>
-
-        <!-- LE GRAND ORBE JARVIS (OPTIMISÉ HAUTE FIDÉLITÉ) -->
-        <div id="jarvis-orb" class="mode-center">
-          <div class="orb-outer-scope"></div>
-          <div class="orb-bloom"></div>
-          <svg class="orb-svg" viewBox="0 0 200 200">
-            <!-- Rayons cyber vectoriels -->
-            <line class="marker" x1="100" y1="4" x2="100" y2="18"/>
-            <line class="marker" x1="100" y1="182" x2="100" y2="196"/>
-            <line class="marker" x1="4" y1="100" x2="18" y2="100"/>
-            <line class="marker" x1="182" y1="100" x2="196" y2="100"/>
-            
-            <!-- Anneaux d'analyses techniques synchronisés (Rotation CSS) -->
-            <circle class="ring r1" cx="100" cy="100" r="92" stroke-dasharray="8 6" stroke-width="0.8"/>
-            <circle class="ring r4" cx="100" cy="100" r="84" stroke-dasharray="30 180 50 20" stroke-width="0.6"/>
-            <circle class="ring r2" cx="100" cy="100" r="74" stroke-dasharray="160 30 50 40" stroke-width="1.8"/>
-            <circle class="ring r3" cx="100" cy="100" r="62" stroke-dasharray="5 10" stroke-width="0.8"/>
-            
-            <!-- Coeur glowing principal -->
-            <circle class="core-ring" cx="100" cy="100" r="42" stroke-width="1"/>
-            <circle class="core-fill" cx="100" cy="100" r="36"/>
-            <ellipse class="core-shine" cx="93" cy="91" rx="12" ry="7"/>
-          </svg>
-          <div class="orb-text">JARVIS</div>
-        </div>
-
-        <!-- SPECTROMÈTRE / WAVEFORM VOCAL PULSANT -->
-        <canvas id="waveform-canvas"></canvas>
-
-        <!-- ESPACE DE CONVERSATION ÉLÉGANT ET SCI-FI -->
-        <div id="chat-zone">
-          <div class="msg-system">INITIALISATION DE LA LIAISON SCI-FI... READY</div>
-        </div>
-
-        <!-- CHASSIS FLOTTEUR D'ENTRÉE DES COMMANDES -->
-        <div id="input-row">
-          <div class="input-glow-bar"></div>
-          <input type="text" id="text-input" placeholder="Parlez ou tapez une directive pour l'ordinateur..." autocomplete="off" spellcheck="false">
-          <button id="send-btn" onclick="handleInputSend()">EXECUTE ↵</button>
-        </div>
-      </section>
-
-      <!-- ================= PANNEAU OUTILS ET APERCUS DROIT ================= -->
-      <section class="hud-panel hud-right-panel">
-        <div class="hud-panel-header">
-          <div class="hud-panel-title">EXECUTION_WORKSPACE</div>
-          <button class="panel-close-btn" onclick="hideWorkspacePanel()" title="Replier le panneau (Espace libre)">✕</button>
-        </div>
-
-        <div class="hud-panel-body">
-          <!-- FLUX VIDÉO CAPTURE DU VAD / SENSORS -->
-          <div class="hud-section-title">TACTICAL WEBCAM VIEW</div>
-          <div id="camera-feed">
-            <video id="camera-video" autoplay muted playsinline></video>
-            <div class="cam-overlay">
-              <div class="cam-corner cam-tl"></div>
-              <div class="cam-corner cam-tr"></div>
-              <div class="cam-corner cam-bl"></div>
-              <div class="cam-corner cam-br"></div>
-              <div class="cam-scanline"></div>
-              <span class="cam-label">PRIMARY WEBCAM HUD [30 FPS]</span>
-              <button class="cam-close" onclick="toggleCamera()">✕</button>
-            </div>
-          </div>
-
-          <!-- TERMINAL D'EXÉCUTION NATIVE (OPEN INTERPRETER OUTPUT) -->
-          <div class="hud-section-title mt-2">OPEN INTERPRETER SHELL</div>
-          <div class="code-terminal-wrapper">
-            <div class="code-terminal-header">
-              <span class="term-pin glow-green"></span>
-              <span class="term-lbl">CORE PYTHON EXECUTOR</span>
-              <span class="term-file">sandbox_engine.py</span>
-            </div>
-            <pre class="code-terminal-body" id="code-terminal-body"># J.A.R.V.I.S Engine Console
-# En attente d'une directive...
-# Les scripts s'exécuteront ici.
-</pre>
-          </div>
-        </div>
-      </section>
-
-    </main>
-
-    <!-- FENÊTRE FLOTTANTE DE CHOIX DES MODÈLES (POPOVER) -->
-    <div id="provider-selector">
-      <div class="provider-header">
-        <span>SÉLECTION DU MOTEUR IA</span>
-        <button onclick="toggleProviderSelector()" class="close-btn">✕</button>
-      </div>
-      <div id="provider-list"></div>
-      <div class="provider-section-title">LOCAL CLI / EXECUTIONS</div>
-      <div id="ollama-list"><span class="provider-none">Moteurs locaux indétectés</span></div>
-    </div>
-
-    <!-- BANQUE DE SIMULATIONS DE DIRECTIVES VOCALES (POPOVER CHASSIS) -->
-    <div id="voice-simulator-panel" style="position: fixed; top: 120px; left: 340px; background: rgba(1, 8, 22, 0.99); border: 1px solid var(--cyan-border); border-radius: var(--radius); padding: 0; width: 330px; max-height: calc(100vh - 160px); overflow-y: auto; display: none; z-index: 501; box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 25px rgba(0, 243, 255, 0.12); backdrop-filter: blur(18px);">
-      <div class="provider-header" style="border-bottom: 1px solid var(--border-dim);">
-        <span>SIMULATION DE RECONNAISSANCE</span>
-        <button onclick="closeVoiceSimSelector()" class="close-btn">✕</button>
-      </div>
-      <div class="provider-section-title">COMMANDES HUD ORDINAIRES</div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, lance un diagnostic complet de l\'HUD')">
-        <span>⚙ Diagnostic global</span><span class="provider-badge badge-local" style="font-size: 8px;">TEST HUD</span>
-      </div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, montre les statistiques système')">
-        <span>⏣ Ressources système</span><span class="provider-badge badge-local" style="font-size: 8px;">STATS PY</span>
-      </div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, active la caméra d\'analyse tactique')">
-        <span>◎ Activer l\'optique caméra</span><span class="provider-badge badge-local" style="font-size: 8px;">CAMERA</span>
-      </div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, fais un test de débit internet et de statut réseau')">
-        <span>⇋ Analyse ping / réseaux</span><span class="provider-badge badge-local" style="font-size: 8px;">NET TEST</span>
-      </div>
-
-      <div class="provider-section-title">RECHERCHES & COGNITION</div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, quel temps fait-il actuellement ?')">
-        <span>☼ Météo en direct</span><span class="provider-badge badge-free" style="font-size: 8px;">WIDGET</span>
-      </div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, cherche des infos wikipedia sur Alan Turing')">
-        <span>W Infos Wikipedia</span><span class="provider-badge badge-free" style="font-size: 8px;">OSINT</span>
-      </div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, cherche sur internet qui est Tony Stark ?')">
-        <span>⌕ Recherche de données</span><span class="provider-badge badge-paid" style="font-size: 8px;">CLOUD</span>
-      </div>
-
-      <div class="provider-section-title">GENERATION DE CODE / EXÉCUTION</div>
-      <div class="provider-item" onclick="simulateVoicePhrase('JARVIS, écris un script python pour calculer la suite de Fibonacci et affiche les 10 premiers nombres')">
-        <span>∑ Générer / Lancer Fibonacci</span><span class="provider-badge badge-paid" style="font-size: 8px;">PYTHON</span>
+      <div class="hud-row">
+        <span class="hl">CPU</span>
+        <span class="hv mono" id="h-cpu">—</span>
       </div>
     </div>
 
-    <!-- BOUTON ACCORT DE DÉPLOIEMENT DES ACCÈS OUTILS -->
-    <button id="tools-btn" onclick="toggleToolsPanel()" title="HUD Tactical Tools">⊞</button>
+    <!-- HUD HAUT DROIT -->
+    <div id="hud-right">
+      <div class="hud-row hr">
+        <span class="hv mono small" id="h-model">GEMINI</span>
+        <button class="hbtn" onclick="toggleModelPanel()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+      <div class="hud-row hr">
+        <span class="hl">API</span>
+        <span class="hv" id="h-api"><span class="dot red"></span> HORS LIGNE</span>
+      </div>
+      <div class="hud-row hr">
+        <span class="hl">MS</span>
+        <span class="hv mono" id="h-latency">—</span>
+      </div>
+    </div>
+
+    <!-- PANNEAU MODÈLES IA -->
+    <div id="model-panel">
+      <div class="mp-head">
+        <span>MODÈLE IA</span>
+        <button onclick="toggleModelPanel()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      </div>
+      <div id="mp-list"></div>
+      <div class="mp-sep">OLLAMA LOCAL</div>
+      <div id="mp-ollama"><span class="mp-empty">Non détecté · ollama.ai</span></div>
+    </div>
+
+    <!-- ORBE CENTRAL -->
+    <div id="orb-wrap" class="orb-center">
+      <div class="orb-glow-outer"></div>
+      <svg id="orb-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="f-glow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="f-glow-high" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="f-halo" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="24"/>
+          </filter>
+        </defs>
+
+        <!-- Grille d'arrière plan circulaire (faint outer ticks and circles) -->
+        <circle cx="150" cy="150" r="145" fill="none" stroke="rgba(0,243,255,0.06)" stroke-width="0.5"/>
+        <line x1="150" y1="0" x2="150" y2="300" stroke="rgba(0,243,255,0.06)" stroke-width="0.5"/>
+        <line x1="0" y1="150" x2="300" y2="150" stroke="rgba(0,243,255,0.06)" stroke-width="0.5"/>
+
+        <!-- Cercle pointillé externe (Thin dashed outer ring) -->
+        <circle cx="150" cy="150" r="130" fill="none" class="ring-spin-slow" stroke="rgba(0, 243, 255, 0.4)" stroke-width="1.2" stroke-dasharray="14 10" />
+
+        <!-- Ticks (Crosshairs orthogonaux externes) -->
+        <line x1="150" y1="12" x2="150" y2="30" stroke="#00E5FF" stroke-width="2.5" />
+        <line x1="150" y1="270" x2="150" y2="288" stroke="#00E5FF" stroke-width="2.5" />
+        <line x1="12" y1="150" x2="30" y2="150" stroke="#00E5FF" stroke-width="2.5" />
+        <line x1="270" y1="150" x2="288" y2="150" stroke="#00E5FF" stroke-width="2.5" />
+
+        <!-- Arc tournant 2 (Outer animated arc, unbroken) -->
+        <circle class="ring-arc-2" cx="150" cy="150" r="110" fill="none" stroke="#00E5FF" stroke-width="2" stroke-dasharray="200 40 50 30" filter="url(#f-glow)" />
+
+        <!-- Arc tournant 1 (Inner animated arc) -->
+        <circle class="ring-arc-1" cx="150" cy="150" r="90" fill="none" stroke="#00E5FF" stroke-width="3" stroke-dasharray="140 40" filter="url(#f-glow)" />
+
+        <!-- Cercle solide cyan interne -->
+        <circle cx="150" cy="150" r="60" fill="none" stroke="#00E5FF" stroke-width="6" class="ring-inner-solid" filter="url(#f-glow-high)" />
+        <circle cx="150" cy="150" r="57" fill="#030919" stroke="none" />
+
+        <!-- Label JARVIS -->
+        <text x="150" y="156" text-anchor="middle" font-family="Rajdhani, sans-serif" font-weight="700" font-size="20" letter-spacing="6" class="orb-text" filter="url(#f-glow)">JARVIS</text>
+      </svg>
+      <div id="orb-time"></div>
+    </div>
+
+    <!-- ZONE MESSAGES -->
+    <div id="chat-zone"></div>
+
+    <!-- PANNEAU CAMÉRA -->
+    <div id="cam-panel">
+      <video id="cam-video" autoplay muted playsinline></video>
+      <div class="cam-overlay">
+        <div class="co-tl"></div><div class="co-tr"></div>
+        <div class="co-bl"></div><div class="co-br"></div>
+        <div class="co-scan"></div>
+        <span class="co-label">VISION</span>
+        <button class="co-close" onclick="toggleCam()"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+      </div>
+    </div>
+
+    <!-- WAVEFORM -->
+    <canvas id="wave"></canvas>
+
+    <!-- INPUT (apparaît au survol bas) -->
+    <div id="input-wrap">
+      <input id="txt" type="text" placeholder="Message…" autocomplete="off" spellcheck="false">
+      <button id="send-btn" onclick="sendTxt()"><svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polyline points="9 10 4 15 9 20"></polyline><path d="M20 4v7a4 4 0 0 1-4 4H4"></path></svg></button>
+    </div>
+
+    <!-- BOUTON OUTILS -->
+    <button id="fab-tools" onclick="toggleTools()"><svg xmlns="http://www.w3.org/2000/svg" width="1.2em" height="1.2em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></button>
     <div id="tools-panel">
-      <div class="tools-header">OUTILS TACTIQUES NATIVES</div>
+      <div class="tp-title"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom; margin-right: 4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> OUTILS</div>
       <div id="tools-grid"></div>
     </div>
 
-    <!-- STATUS BAR SUPÉRIEURE / PIED DE PAGE INFÉREUR -->
-    <footer id="status-bar">
-      <div class="status-left">
-        <span id="status-dot" class="dot dot-offline"></span>
-        <span id="status-text">INITIALISATION</span>
+    <!-- BARRE DE STATUT -->
+    <div id="status-bar">
+      <div class="sb-l">
+        <span class="dot" id="sb-dot"></span>
+        <span id="sb-status">INITIALISATION</span>
       </div>
-      <div class="status-center">
-        <span class="shortcut">ESPACE micro</span>
-        <span class="shortcut">C webcam</span>
-        <span class="shortcut">N carte</span>
-        <span class="shortcut">ESC stop</span>
-        <span class="shortcut highlight" id="browser-toggle" onclick="toggleBrowserView()" style="cursor:pointer;">VIEW CHROME</span>
+      <div class="sb-c">
+        <span class="kb">SPC</span><span class="kl">· micro</span>
+        <span class="kb">C</span><span class="kl">· cam</span>
+        <span class="kb">N</span><span class="kl">· carte</span>
+        <span class="kb">ESC</span><span class="kl">· stop</span>
       </div>
-      <div class="status-right mono" id="status-time">00:00</div>
-    </footer>
-
-  </div>
-
-  <!-- ÉCRAN D'INITIALISATION INITIAL (BOOT DECK) -->
-  <div id="boot-screen">
-    <div class="boot-content">
-      <div class="boot-orb-mini"></div>
-      <div class="boot-text">J.A.R.V.I.S</div>
-      <div class="boot-sub">SYNCHRONISATION DES CAPTEURS TACTIQUES...</div>
-      <div class="boot-bar"><div class="boot-fill" id="boot-fill"></div></div>
+      <div class="sb-r mono" id="sb-time">00:00</div>
     </div>
   </div>
 
-  <script src="renderer.js"></script>
+  <!-- ÉCRAN DE BOOT -->
+  <div id="boot-screen">
+    <div id="boot-inner">
+      <svg width="74" height="74" viewBox="0 0 74 74">
+        <circle cx="37" cy="37" r="33" fill="none" stroke="rgba(50,110,210,0.18)" stroke-width="1.5"/>
+        <circle id="boot-ring" cx="37" cy="37" r="33" fill="none" stroke="rgba(160,200,255,0.82)" stroke-width="1.8" stroke-dasharray="78 130"/>
+      </svg>
+      <div class="boot-name">J.A.R.V.I.S</div>
+      <div class="boot-sub">INITIALISATION DU SYSTÈME</div>
+      <div id="boot-bar"><div id="boot-fill"></div></div>
+      <div class="boot-hint" id="boot-hint">Chargement des modules…</div>
+    </div>
+  </div>
+
+  <script src="/src/scripts/renderer.js"></script>
 </body>
 </html>
