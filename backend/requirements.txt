@@ -59,5 +59,12 @@ openpyxl
 open-interpreter
 python-whois
 holehe
+numpy
+matplotlib
+filetype
+stegano
+scipy
+ortools
+scapy
 
 

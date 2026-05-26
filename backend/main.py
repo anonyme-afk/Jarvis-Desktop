@@ -501,6 +501,12 @@ TOOL_DECLARATIONS = [
   }
 ]
 
+try:
+    from actions.jarvis_lightweight_skills import JARVIS_LIGHTWEIGHT_SCHEMAS
+    TOOL_DECLARATIONS.extend(JARVIS_LIGHTWEIGHT_SCHEMAS)
+except ImportError:
+    pass
+
 class DummyPlayer:
     def __init__(self):
         self.muted = False
@@ -1421,6 +1427,34 @@ class JarvisLive:
                     result = inspect_jarvis_skills()
                 except Exception as e:
                     result = f"Self-Inspector Error: {e}"
+
+            elif name == "analyze_data_and_math":
+                from actions.jarvis_lightweight_skills import analyze_data_and_math
+                result = analyze_data_and_math(args.get("file_path"))
+                
+            elif name == "detect_file_integrity":
+                from actions.jarvis_lightweight_skills import detect_file_integrity
+                result = detect_file_integrity(args.get("file_path"))
+                
+            elif name == "process_signals_and_morse":
+                from actions.jarvis_lightweight_skills import process_signals_and_morse
+                result = process_signals_and_morse(args.get("file_path"), args.get("morse_text"))
+                
+            elif name == "monitor_system_and_volume":
+                from actions.jarvis_lightweight_skills import monitor_system_and_volume
+                result = monitor_system_and_volume(args.get("action"), args.get("volume_level"))
+                
+            elif name == "manage_local_history":
+                from actions.jarvis_lightweight_skills import manage_local_history
+                result = manage_local_history(args.get("action"), args.get("command"))
+                
+            elif name == "solve_optimized_schedule":
+                from actions.jarvis_lightweight_skills import solve_optimized_schedule
+                result = solve_optimized_schedule(args.get("tasks"))
+                
+            elif name == "scan_local_packets":
+                from actions.jarvis_lightweight_skills import scan_local_packets
+                result = scan_local_packets(args.get('count', 10))
 
             else:
                 # Catch-all

@@ -3,10 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JARVIS</title>
+  <title>JARVIS - Multi-modal Assistant</title>
+  <meta name="description" content="JARVIS is a powerful multi-modal AI assistant. Capabilities include Voice, Vision, OSINT tools, hardware management, and more.">
+  <meta name="keywords" content="jarvis, ai, assistant, gemini, multimodal, automation, dashboard">
+  
+  <meta property="og:title" content="JARVIS - Multi-modal Assistant">
+  <meta property="og:description" content="JARVIS is a powerful multi-modal AI assistant powered by Gemini.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://jarvis.local">
+  
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" media="print" onload="this.media='all'">
+  
+  <link rel="preload" href="/src/styles/style.css" as="style">
   <link rel="stylesheet" href="/src/styles/style.css">
+  <link rel="modulepreload" href="/src/scripts/renderer.js">
+  
+  <style>
+    /* Critical Inline CSS */
+    body { background-color: #010409; color: #fff; margin: 0; padding: 0; font-family: 'Rajdhani', sans-serif; }
+    #boot-screen { position: fixed; inset: 0; z-index: 10000; background: #010409; display: flex; align-items: center; justify-content: center; flex-direction: column; }
+    .boot-name { font-size: 28px; letter-spacing: 4px; font-weight: 600; margin-top: 20px; }
+  </style>
 </head>
 <body>
   <!-- FOND GRILLE MILLIMÈTRE -->
@@ -74,15 +94,12 @@
       <svg id="orb-svg" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <filter id="f-glow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="blur"/>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
           <filter id="f-glow-high" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-          <filter id="f-halo" x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="24"/>
           </filter>
         </defs>
 
@@ -179,12 +196,17 @@
 
   <!-- BOOT SCRIPT -->
   <script type="module">
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW setup failed'));
+      });
+    }
     try {
       window.ENV_GMAPS_KEY = process.env.GOOGLE_MAPS_PLATFORM_KEY || "";
     } catch(e) {
       window.ENV_GMAPS_KEY = "";
     }
   </script>
-  <script src="/src/scripts/renderer.js"></script>
+  <script type="module" src="/src/scripts/renderer.js" defer></script>
 </body>
 </html>

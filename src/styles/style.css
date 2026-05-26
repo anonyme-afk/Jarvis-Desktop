@@ -41,6 +41,11 @@ body::after {
   background: radial-gradient(circle at center, transparent 40%, rgba(2, 7, 14, 0.75) 120%);
 }
 
+@media (prefers-reduced-motion: reduce), (max-width: 768px) {
+  body::before, body::after { display: none !important; }
+  .ring-arc-1, .ring-arc-2, .ring-spin-slow, .orb-glow-outer, .ring-inner-solid { animation: none !important; }
+}
+
 #grid-bg {
   position:fixed; inset:0; z-index:0; pointer-events:none;
   background-image:

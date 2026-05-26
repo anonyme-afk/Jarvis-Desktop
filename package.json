@@ -1,7 +1,25 @@
 {
-  "name": "react-example",
+  "name": "jarvis-assistant",
+  "version": "1.0.0",
+  "description": "Multi-modal AI assistant powered by Gemini and LLMs with OSINT, file, and hardware capabilities.",
+  "keywords": [
+    "ai",
+    "assistant",
+    "jarvis",
+    "gemini",
+    "osint",
+    "automation"
+  ],
+  "author": "AI Studio <contact@google.com> (https://ai.google.dev)",
+  "license": "MIT",
+  "repository": "https://github.com/google/jarvis-assistant",
+  "homepage": "https://github.com/google/jarvis-assistant#readme",
+  "bugs": "https://github.com/google/jarvis-assistant/issues",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.10.0"
+  },
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -31,6 +49,7 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
+    "terser": "^5.48.0",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"

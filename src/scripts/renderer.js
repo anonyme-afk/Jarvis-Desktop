@@ -143,7 +143,10 @@ class NetworkMap {
   reset() {
     this.nodes = [];
     this.edges = [];
-    for (let i = 0; i < 85; i++)
+    const isLowEnd = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 4) <= 4;
+    const count = isLowEnd ? 30 : 85;
+    
+    for (let i = 0; i < count; i++) {
       this.nodes.push({
         x: Math.random() * this.c.width,
         y: Math.random() * this.c.height,
@@ -151,46 +154,90 @@ class NetworkMap {
         ph: Math.random() * Math.PI * 2,
         hub: Math.random() < 0.07,
       });
+    }
+    
+    // Optimisation de N^2 avec limite spatiale grossière
+    const gridSize = 200;
+    const grid = {};
+    const getCell = (x, y) => `${Math.floor(x/gridSize)}_${Math.floor(y/gridSize)}`;
+    
+    this.nodes.forEach((n, i) => {
+        n.id = i;
+        const cell = getCell(n.x, n.y);
+        if(!grid[cell]) grid[cell] = [];
+        grid[cell].push(n);
+    });
+
     this.nodes.forEach((a, i) => {
-      this.nodes
-        .map((b, j) => ({ j, d: Math.hypot(b.x - a.x, b.y - a.y) }))
-        .filter((x) => x.j !== i && x.d < 170)
-        .sort((a, b) => a.d - b.d)
-        .slice(0, 3)
-        .forEach((x) => {
-          if (
-            !this.edges.find(
-              (e) => (e.a === i && e.b === x.j) || (e.a === x.j && e.b === i),
-            )
-          )
-            this.edges.push({ a: i, b: x.j, op: Math.random() * 0.22 + 0.04 });
-        });
+        let neighbors = [];
+        const cellX = Math.floor(a.x/gridSize);
+        const cellY = Math.floor(a.y/gridSize);
+        
+        for(let dx = -1; dx <= 1; dx++) {
+            for(let dy = -1; dy <= 1; dy++) {
+                const c = `${cellX+dx}_${cellY+dy}`;
+                if(grid[c]) neighbors.push(...grid[c]);
+            }
+        }
+        
+        neighbors
+          .map((b) => ({ j: b.id, d: Math.hypot(b.x - a.x, b.y - a.y) }))
+          .filter((x) => x.j !== i && x.d < 170)
+          .sort((a, b) => a.d - b.d)
+          .slice(0, isLowEnd ? 2 : 3)
+          .forEach((x) => {
+            if (!this.edges.find((e) => (e.a === i && e.b === x.j) || (e.a === x.j && e.b === i))) {
+                this.edges.push({ a: i, b: x.j, op: Math.random() * 0.22 + 0.04 });
+            }
+          });
     });
   }
   draw(ts) {
     this.raf = requestAnimationFrame((t) => this.draw(t));
+    const now = Date.now();
+    if(this.lastDraw && now - this.lastDraw < 33) return; // limit to ~30fps
+    this.lastDraw = now;
+    
     const { cx, c, nodes: N, edges: E } = this;
     cx.clearRect(0, 0, c.width, c.height);
+    
+    const isLowEnd = (navigator.hardwareConcurrency || 4) <= 4;
+    
+    cx.beginPath();
     E.forEach((e) => {
       const a = N[e.a],
         b = N[e.b];
-      const g = cx.createLinearGradient(a.x, a.y, b.x, b.y);
-      g.addColorStop(0, `rgba(18,65,125,${e.op})`);
-      g.addColorStop(0.5, `rgba(38,110,180,${e.op * 1.4})`);
-      g.addColorStop(1, `rgba(18,65,125,${e.op})`);
-      cx.beginPath();
-      cx.moveTo(a.x, a.y);
-      cx.lineTo(b.x, b.y);
-      cx.strokeStyle = g;
-      cx.lineWidth = 0.45;
-      cx.stroke();
+        
+      if(!isLowEnd) {
+          const g = cx.createLinearGradient(a.x, a.y, b.x, b.y);
+          g.addColorStop(0, `rgba(18,65,125,${e.op})`);
+          g.addColorStop(0.5, `rgba(38,110,180,${e.op * 1.4})`);
+          g.addColorStop(1, `rgba(18,65,125,${e.op})`);
+          cx.strokeStyle = g;
+          cx.beginPath();
+          cx.moveTo(a.x, a.y);
+          cx.lineTo(b.x, b.y);
+          cx.lineWidth = 0.45;
+          cx.stroke();
+      } else {
+          // Batch lines for better performance on weak devices
+          cx.moveTo(a.x, a.y);
+          cx.lineTo(b.x, b.y);
+      }
     });
+    
+    if(isLowEnd) {
+        cx.strokeStyle = 'rgba(38,110,180,0.15)';
+        cx.lineWidth = 0.45;
+        cx.stroke();
+    }
+
     N.forEach((n) => {
       const p = Math.sin(ts * 0.0016 + n.ph) * 0.5 + 0.5;
       const r = n.hub ? n.r * 2.6 : n.r;
       const al = n.hub ? 0.55 + p * 0.4 : 0.22 + p * 0.28;
       const col = n.hub ? `rgba(55,215,130,${al})` : `rgba(58,143,212,${al})`;
-      if (n.hub) {
+      if (n.hub && !isLowEnd) {
         cx.beginPath();
         cx.arc(n.x, n.y, r * 4, 0, Math.PI * 2);
         cx.fillStyle = `rgba(38,195,115,${0.022 * p})`;
@@ -327,8 +374,13 @@ function initWaveform() {
       src.connect(analyser);
     })
     .catch(() => {});
+  let lastWaveDraw = 0;
   (function draw() {
     requestAnimationFrame(draw);
+    const now = Date.now();
+    if(now - lastWaveDraw < 33) return; // 30fps throttle
+    lastWaveDraw = now;
+    
     cx.clearRect(0, 0, c.width, c.height);
     const bars = 52,
       bw = c.width / bars - 1,
@@ -581,18 +633,28 @@ function addMsg(txt, sender, mode = "") {
   const c = txt.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
   if (sender === "jarvis") {
-    wrap.innerHTML = `<div class="msg-who">JARVIS</div>${modeTag}<div class="msg-body typing"></div>`;
+    const isLowEnd = (navigator.hardwareConcurrency || 4) <= 4;
+    wrap.innerHTML = `<div class="msg-who">JARVIS</div>${modeTag}<div class="msg-body ${isLowEnd ? '' : 'typing'}"></div>`;
     z.appendChild(wrap);
-    let i = 0;
     const body = wrap.querySelector(".msg-body");
-    const tid = setInterval(() => {
-      body.innerHTML = c.slice(0, ++i);
+    
+    if (isLowEnd) {
+      body.innerHTML = c;
       z.scrollTop = z.scrollHeight;
-      if (i >= c.length) {
-        body.classList.remove("typing");
-        clearInterval(tid);
-      }
-    }, 12);
+    } else {
+      let i = 0;
+      // Faster typing, grouping chars to avoid layout thrashing
+      const stride = 3; 
+      const tid = setInterval(() => {
+        i += stride;
+        body.innerHTML = c.slice(0, i);
+        z.scrollTop = z.scrollHeight;
+        if (i >= c.length) {
+          body.classList.remove("typing");
+          clearInterval(tid);
+        }
+      }, 16);
+    }
   } else {
     wrap.innerHTML = `<div class="msg-who">USER</div><div class="msg-body">${c}</div>`;
     z.appendChild(wrap);
