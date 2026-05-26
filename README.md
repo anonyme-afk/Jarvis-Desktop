@@ -27,6 +27,16 @@ Cette version reorganise entierement l'interface utilisateur (HUD) :
 
 ---
 
+🔑 **Configuration des Clés d'API (CRITIQUE)**
+
+Pour éviter les limitations de quota d'appel (Erreurs **429 RESOURCE_EXHAUSTED** de l'API Gemini standard), cette version intègre désormais le routage intelligent multi-modèles d'OpenRouter. Il est **STRICTEMENT RECOMMANDÉ** de configurer votre clé d'API OpenRouter.
+
+Ajoutez ces variables dans votre fichier `.env` :
+- `OPENROUTER_API_KEY` : Votre clé API OpenRouter personnelle (Créez un compte gratuit sur https://openrouter.ai et générez une clé). Elle donne accès aux modèles gratuits et stables comme *DeepSeek V4 Flash*, *MiniMax M2.5*, *Gemma 4*, o1-oss, etc.
+- `GEMINI_API_KEY` : Votre clé API Google AI Studio standard (utilisée en cas de secours ultime si OpenRouter échoue).
+
+---
+
 ## 1. Installation et Lancement Automatique (1-Clic)
 
 Tout a ete automatise de A a Z.
@@ -35,7 +45,7 @@ Tout a ete automatise de A a Z.
 1. Telechargez et installez Node.js (https://nodejs.org) et Python (https://python.org - veillez a cocher l'option "Add Python to PATH").
 2. Double-cliquez simplement sur `START_JARVIS.bat`.
 3. Au premier lancement : Le script detectera l'absence de vos dependances et installera automatiquement tout le necessaire (Node.js, environnement virtuel Python, outils de backend, framework frontend).
-4. Le script copiera egalement l'exemple de configuration vers votre propre fichier `.env` puis l'ouvrira dans un editeur de texte. Configurez votre cle d'API Gemini (obtenez-en une sur https://aistudio.google.com).
+4. Le script copiera egalement l'exemple de configuration vers votre propre fichier `.env` puis l'ouvrira dans un editeur de texte. Configurez absolument votre cle d'API OpenRouter via `OPENROUTER_API_KEY` et optionnellement votre clé Gemini via `GEMINI_API_KEY`.
 5. Enregistrez le fichier `.env` et fermez-le. Le systeme lancera alors automatiquement le moteur de JARVIS, ouvrira votre navigateur sur l'adresse de l'interface (http://localhost:3000) et compilera le HUD.
 
 ### Lancement regulier :
@@ -48,18 +58,11 @@ Double-cliquez simplement sur `START_JARVIS.bat`. Il sautera les etapes de telec
 Si vous preferez installer manuellement ou si vous utilisez macOS / Linux :
 
 ```bash
-# 1. Configurer votre cle d'API
+# 1. Configurer vos clés d'API
 cp .env.example .env
-# Editez le fichier .env pour y ajouter votre GEMINI_API_KEY
-
-# 2. Installer les dependances de l'interface (Frontend a la racine)
-npm install
-
-# 3. Creer l'environnement virtuel Python et installer les dependances (Backend)
-python3 -m venv venv
-source venv/bin/activate
-pip install -r backend/requirements.txt
-python -m playwright install --with-deps
+# Editez le fichier .env pour y ajouter :
+# OPENROUTER_API_KEY=votre_cle_openrouter
+# GEMINI_API_KEY=votre_cle_gemini
 ```
 
 Puis pour le lancer, ouvrez deux terminaux :

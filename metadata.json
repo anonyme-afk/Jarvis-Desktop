@@ -1,5 +1,5 @@
 {
-  "name": "JARVIS Desktop v3",
+  "name": "JARVIS Desktop v5",
   "description": "Assistant IA holographique style Iron Man. Vision, OSINT, Gaming, NFC, Mémoire, Domotique. Projet : https://github.com/anonyme-afk/Jarvis-Desktop",
   "requestFramePermissions": [
     "camera",

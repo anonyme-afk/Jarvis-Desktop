@@ -50,4 +50,5 @@ geopy
 pytesseract
 cryptography
 python-nmap
+python-dotenv
 

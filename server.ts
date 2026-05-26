@@ -44,6 +44,71 @@ Ne sors JAMAIS du personnage.
 
 const conversationHistory: any[] = [];
 
+const FREE_MODELS_JS = [
+  "deepseek/deepseek-v4-flash:free",
+  "minimax/minimax-m2.5:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "openai/gpt-oss-120b:free"
+];
+
+async function callOpenRouter(history: any[]): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error("Missing or empty OPENROUTER_API_KEY");
+  }
+
+  // Map history format to standard chat messages
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT }
+  ];
+  for (const turn of history) {
+    const role = turn.role === "model" ? "assistant" : "user";
+    const text = turn.parts?.[0]?.text || "";
+    messages.push({ role, content: text });
+  }
+
+  let lastError: any = null;
+  for (const model of FREE_MODELS_JS) {
+    try {
+      console.log(`[OpenRouter TS Client] Attempting chat completion with model: ${model}`);
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey.trim()}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://ai.studio/build",
+          "X-Title": "JARVIS WebHUD"
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 2500
+        }),
+        // Avoid lingering/hanging connections
+        signal: AbortSignal.timeout(15000)
+      });
+
+      if (!res.ok) {
+        throw new Error(`OpenRouter HTTP ${res.status}: ${await res.text()}`);
+      }
+
+      const data: any = await res.json();
+      if (data.choices && data.choices.length > 0) {
+        return data.choices[0].message?.content || "";
+      } else {
+        throw new Error("Empty choices in response");
+      }
+    } catch (e: any) {
+      console.log(`[OpenRouter TS Client] Model ${model} failed: ${e.message || e}`);
+      lastError = e;
+    }
+  }
+
+  throw lastError || new Error("All free models failed");
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -124,7 +189,7 @@ async function startServer() {
     }
   });
 
-  // API Tool Chat Route with Gemini Failover
+  // API Tool Chat Route with Gemini Failover & OpenRouter bypass
   app.post("/api/tool-chat", async (req, res) => {
     const message = req.body.message || "";
     try {
@@ -136,10 +201,10 @@ async function startServer() {
       const data = await response.json();
       res.json(data);
     } catch (e: any) {
-      // Offline fallback: Use Google GenAI directly if GEMINI_API_KEY is defined
+      // Offline fallback: Use OpenRouter (Primary) or Google GenAI (Secondary)
       try {
-        if (!process.env.GEMINI_API_KEY) {
-          res.json({ reply: "Mode autonome. Activez votre clé API GEMINI_API_KEY dans le fichier .env de l'éditeur pour converser directement." });
+        if (!process.env.GEMINI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+          res.json({ reply: "Mode autonome. Activez votre clé API GEMINI_API_KEY ou OPENROUTER_API_KEY dans le fichier .env de l'éditeur pour converser directement." });
           return;
         }
 
@@ -148,19 +213,39 @@ async function startServer() {
         if (conversationHistory.length > 20) {
           conversationHistory.shift();
         }
-        
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.5-flash',
-          contents: [
-            { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-            ...conversationHistory
-          ],
-          config: {
-            tools: [{ googleSearch: {} }] // Real OSINT grounding via web search
+
+        let replyText = "";
+        let usedOpenRouter = false;
+
+        // Try OpenRouter first to avoid 429 quota traps of standard Gemini accounts
+        if (process.env.OPENROUTER_API_KEY) {
+          try {
+            console.log("[Autonomous Fallback] Initiating resilient OpenRouter Call series...");
+            replyText = await callOpenRouter(conversationHistory);
+            usedOpenRouter = true;
+          } catch (orErr: any) {
+            console.log("[Autonomous Fallback] OpenRouter sequence failed, attempting standard Gemini fallback.", orErr);
           }
-        });
-        
-        let replyText = response.text || "JARVIS n'a pas pu formuler de réponse.";
+        }
+
+        // Gemini fallback if OpenRouter was not used / failed
+        if (!usedOpenRouter) {
+          if (!process.env.GEMINI_API_KEY) {
+            throw new Error("OpenRouter calls failed and no GEMINI_API_KEY was configured as fallback.");
+          }
+          console.log("[Autonomous Fallback] Falling back to standard Gemini Flash call...");
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.5-flash',
+            contents: [
+              { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+              ...conversationHistory
+            ],
+            config: {
+              tools: [{ googleSearch: {} }] // Real OSINT grounding via web search
+            }
+          });
+          replyText = response.text || "JARVIS n'a pas pu formuler de réponse.";
+        }
         
         // Add model answer to historic chain
         conversationHistory.push({ role: "model", parts: [{ text: replyText }] });
@@ -205,12 +290,12 @@ async function startServer() {
         
         res.json({ reply: replyText });
       } catch (geminiErr: any) {
-        console.error("Gemini Direct Error:", geminiErr);
+        console.error("Gemini/OpenRouter Direct Error:", geminiErr);
         const errStr = (geminiErr.message || geminiErr.toString() || "").toLowerCase();
         if (errStr.includes("429") || errStr.includes("quota") || errStr.includes("limit") || errStr.includes("exhausted")) {
-          res.json({ reply: "Désolé, la limite de requêtes (quota d'appel gratuit) de l'API Gemini est temporairement épuisée (Erreur 429).\n\nPour continuer à discuter avec moi en mode autonome sans interruption :\n\n1. Attendez simplement une minute (les quotas se réinitialisent par minute).\n2. Vous pouvez aussi ajouter votre propre clé d'API personnelle dans les paramètres de AI Studio (Settings) ou dans le fichier `.env` via la variable `GEMINI_API_KEY`.\n3. Assurez-vous également d'avoir démarré JARVIS localement si vous préférez qu'il l'exécute depuis votre machine." });
+          res.json({ reply: "Désolé, les quotas d'appels de l'API Gemini et d'OpenRouter sont temporairement épuisés (Erreur 429).\n\nPour continuer à discuter avec moi en mode autonome sans interruption :\n\n1. Attendez une minute (les quotas se réinitialisent par minute).\n2. Vous pouvez ajouter votre propre clé d'API personnelle dans le fichier `.env` via les variables `OPENROUTER_API_KEY` ou `GEMINI_API_KEY`." });
         } else {
-          res.json({ reply: "Erreur d'appel autonome Gemini : " + geminiErr.message });
+          res.json({ reply: "Erreur d'appel autonome JARVIS : " + geminiErr.message });
         }
       }
     }
