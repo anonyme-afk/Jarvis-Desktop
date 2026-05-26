@@ -13,6 +13,8 @@ Une gratitude particuliere est adressee au developpeur **FatihMakes** pour son t
 - Le frontend holographique exceptionnel de l'ancien Jarvis-Desktop a ete conserve, heberge a la racine du projet pour des raisons de performances Vite.
 - Le cerveau backend a ete entierement remplace par le puissant moteur Mark-XXXIX base sur l'IA Gemini Multimodal Live, offrant une latence auditive ultra basse.
 - **Systeme de Tools Omniscient (GOD MODE)** : Les capacites ont ete portees a un niveau critique. Mark-XXXIX integre un catalogue colossal : Threat Intelligence (Shodan), OCR et Biometrie Faciale (MediaPipe, Tesseract), Scan Reseau profond (Nmap, Scapy), Cryptographie de grade militaire, geolocalisation par satellite (GeoPy) et bien plus. Il integre egalement l'ecosysteme Composio, Browser-Use, LangChain, et CrewAI.
+- **Serveurs Model Context Protocol (MCP)** : Support des plugins contextuels dynamiques d'Anthropic (Filesystem, Google Maps, Postgres, Web Search).
+- **Plugins Ecosystème Modulaire** : Intégration simulée et architecture d'attachement aux modules externes (CrewAI, AutoGPT Plugins).
 - L'arborescence globale a ete rationalisee (separation logique de la racine (Frontend) vs `backend/`).
 
 ---

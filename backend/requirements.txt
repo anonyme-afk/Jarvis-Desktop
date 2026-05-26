@@ -51,4 +51,10 @@ pytesseract
 cryptography
 python-nmap
 python-dotenv
+beautifulsoup4
+pygetwindow
+plyer
+pandas
+openpyxl
+
 

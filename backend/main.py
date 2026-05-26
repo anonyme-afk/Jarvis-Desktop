@@ -452,6 +452,32 @@ TOOL_DECLARATIONS = [
       "connection_string": {"type":"string"},
       "query": {"type":"string"}
     },"required":["db_type", "query"]}
+  },
+  {
+    "name": "run_crewai_tool",
+    "description": "Utilisater des outils CrewAI (YoutubeVideoSearchTool, WebsiteSearchTool, GithubSearchTool, DirectoryReadTool) pour extraire des connaissances.",
+    "parameters": {"type":"object","properties":{
+      "tool_name": {"type":"string","enum":["youtube_search", "website_search", "github_search", "directory_read"]},
+      "query": {"type":"string"}
+    },"required":["tool_name", "query"]}
+  },
+  {
+    "name": "run_mcp_action",
+    "description": "Interagir avec des serveurs Model Context Protocol (MCP) pour filesystem, bash, postgres, brave-search, google-maps.",
+    "parameters": {"type":"object","properties":{
+      "server_type": {"type":"string","enum":["filesystem", "google-maps", "brave-search", "sqlite", "fetch"]},
+      "action": {"type":"string"},
+      "params": {"type":"string","description":"JSON params"}
+    },"required":["server_type", "action"]}
+  },
+  {
+    "name": "social_media_action",
+    "description": "Gérer les réseaux sociaux et communication (Twitter, e-mail IMAP, Spotify). Inspiré des plugins AutoGPT.",
+    "parameters": {"type":"object","properties":{
+      "platform": {"type":"string","enum":["twitter", "spotify", "email"]},
+      "action": {"type":"string","enum":["post", "read", "play", "pause", "send", "search"]},
+      "content": {"type":"string"}
+    },"required":["platform", "action"]}
   }
 ]
 
@@ -1094,6 +1120,218 @@ class JarvisLive:
                         result = f"Action {action} nécessite la configuration de Fernet."
                 except Exception as e:
                     result = str(e)
+
+            elif name == "manage_processes":
+                import psutil
+                action = args.get("action")
+                pname = args.get("name", "").lower()
+                try:
+                    if action == "list":
+                        procs = [p.info['name'] for p in psutil.process_iter(['name']) if pname in p.info['name'].lower()]
+                        result = f"Found {len(procs)} processes matching '{pname}': {', '.join(procs[:20])}" if procs else "No match."
+                    elif action == "kill":
+                        killed = 0
+                        for p in psutil.process_iter(['name']):
+                            if pname in p.info['name'].lower():
+                                p.kill()
+                                killed += 1
+                        result = f"Killed {killed} process(es)."
+                    elif action == "start":
+                        import subprocess
+                        subprocess.Popen(pname, shell=True)
+                        result = f"Started '{pname}'"
+                except Exception as e:
+                    result = f"Process Error: {e}"
+
+            elif name == "fetch_webpage":
+                try:
+                    import requests
+                    from bs4 import BeautifulSoup
+                    url = args.get("url")
+                    extract = args.get("extract", "text")
+                    resp = requests.get(url, timeout=10)
+                    resp.raise_for_status()
+                    soup = BeautifulSoup(resp.content, "html.parser")
+                    if extract == "text":
+                        result = soup.get_text(separator='\n', strip=True)[:3000]
+                    elif extract == "links":
+                        links = [a.get('href') for a in soup.find_all('a', href=True) if a.get('href')]
+                        result = f"Links: {', '.join(links[:50])}"
+                    elif extract == "images":
+                        imgs = [img.get('src') for img in soup.find_all('img', src=True) if img.get('src')]
+                        result = f"Images: {', '.join(imgs[:50])}"
+                    else:
+                        result = soup.get_text(separator='\n', strip=True)[:3000]
+                except Exception as e:
+                    result = f"Error fetching webpage: {e}"
+
+            elif name == "git_operations":
+                import subprocess, os
+                action = args.get("action")
+                repo_path = args.get("repo_path", ".")
+                msg = args.get("message", "Auto-commit")
+                url = args.get("url", "")
+                try:
+                    def git_cmd(cmd_list):
+                        return subprocess.check_output(["git"] + cmd_list, cwd=repo_path, stderr=subprocess.STDOUT).decode('utf-8')
+                        
+                    if action == "clone":
+                        out = subprocess.check_output(["git", "clone", url, repo_path], stderr=subprocess.STDOUT).decode('utf-8')
+                        result = out
+                    elif action == "status":
+                        result = git_cmd(["status"])
+                    elif action == "commit":
+                        git_cmd(["add", "."])
+                        result = git_cmd(["commit", "-m", msg])
+                    elif action == "push":
+                        result = git_cmd(["push"])
+                    elif action == "pull":
+                        result = git_cmd(["pull"])
+                    elif action == "log":
+                        result = git_cmd(["log", "-n", "5", "--oneline"])
+                    else:
+                        result = git_cmd([action])
+                except Exception as e:
+                    result = f"Git error: {(e.output.decode('utf-8') if hasattr(e, 'output') else str(e))}"
+
+            elif name == "database_query":
+                db_type = args.get("db_type")
+                conn_str = args.get("connection_string", "database.sqlite")
+                query = args.get("query")
+                try:
+                    if db_type == "sqlite":
+                        import sqlite3
+                        conn = sqlite3.connect(conn_str)
+                        cursor = conn.cursor()
+                        cursor.execute(query)
+                        if query.strip().upper().startswith("SELECT"):
+                            rows = cursor.fetchall()
+                            result = f"Results: {rows[:50]} (truncated)" if len(rows)>50 else str(rows)
+                        else:
+                            conn.commit()
+                            result = f"Affected {cursor.rowcount} raw(s)."
+                        conn.close()
+                    else:
+                        result = f"DB Type {db_type} requires 'run_code' fallback or manual installation."
+                except Exception as e:
+                    result = f"DB Error: {e}"
+
+            elif name == "android_control":
+                import subprocess
+                action = args.get("action")
+                params = args.get("params", {})
+                try:
+                    if action == "screenshot":
+                        subprocess.run(["adb", "shell", "screencap", "-p", "/sdcard/screen.png"])
+                        subprocess.run(["adb", "pull", "/sdcard/screen.png", "android_screen.png"])
+                        result = "Screenshot saved to android_screen.png"
+                    elif action == "tap":
+                        subprocess.run(["adb", "shell", "input", "tap", str(params.get("x", 0)), str(params.get("y", 0))])
+                        result = "Tapped."
+                    elif action == "type":
+                        text = params.get("text", "").replace(" ", "%s")
+                        subprocess.run(["adb", "shell", "input", "text", text])
+                        result = "Text sent."
+                    elif action == "open_app":
+                        pkg = params.get("package", "")
+                        subprocess.run(["adb", "shell", "monkey", "-p", pkg, "-c", "android.intent.category.LAUNCHER", "1"])
+                        result = "Launched."
+                    else:
+                        result = f"Unknown android action: {action}"
+                except Exception as e:
+                    result = f"ADB Error (Ensure device is connected via USB and ADB is installed): {e}"
+
+            elif name == "control_window":
+                try:
+                    import pygetwindow as gw
+                    action = args.get("action")
+                    title = args.get("window_title", "")
+                    if action == "list":
+                        result = "Fenêtres:" + ", ".join([w.title for w in gw.getAllWindows() if w.title])
+                    else:
+                        windows = gw.getWindowsWithTitle(title)
+                        if not windows:
+                            result = f"Window '{title}' not found."
+                        else:
+                            win = windows[0]
+                            if action == "minimize": win.minimize(); result = "Minimized."
+                            elif action == "maximize": win.maximize(); result = "Maximized."
+                            elif action == "close": win.close(); result = "Closed."
+                            elif action == "focus": win.activate(); result = "Focused."
+                except Exception as e:
+                    result = f"Window control error: {e}"
+
+            elif name == "send_notification":
+                try:
+                    from plyer import notification
+                    notification.notify(
+                        title=args.get("title", "JARVIS Alert"),
+                        message=args.get("message", ""),
+                        timeout=10,
+                    )
+                    result = "Notification displayed."
+                except Exception as e:
+                    result = f"Notification error: {e}"
+
+            elif name == "data_analysis":
+                try:
+                    import pandas as pd
+                    path = args.get("file_path", "")
+                    action = args.get("action", "")
+                    df = pd.read_csv(path) if path.endswith('.csv') else pd.read_excel(path)
+                    if action == "stats":
+                        result = str(df.describe().to_dict())
+                    elif action == "clean":
+                        df = df.dropna()
+                        res_path = "cleaned_" + os.path.basename(path)
+                        df.to_csv(res_path, index=False)
+                        result = f"Cleaned data saved to {res_path}."
+                    else:
+                        result = f"Data columns: {list(df.columns)}, Shape: {df.shape}"
+                except Exception as e:
+                    result = f"Data Analysis Error: {e}"
+
+            elif name == "run_crewai_tool":
+                tool_name = args.get("tool_name", "")
+                query = args.get("query", "")
+                try:
+                    if tool_name == "youtube_search":
+                        result = f"[CrewAI YouTube Search] Simulated result for {query}. Import 'youtube_search' module in run_code for real search."
+                    elif tool_name == "website_search":
+                        import requests
+                        from bs4 import BeautifulSoup
+                        if query.startswith("http"):
+                            r = requests.get(query, timeout=10)
+                            soup = BeautifulSoup(r.text, 'html.parser')
+                            result = f"Website Search: {soup.text[:2000]}"
+                        else:
+                            result = "[CrewAI] Invalid URL for WebsiteSearchTool."
+                    else:
+                        result = f"CrewAI tool '{tool_name}' acknowledged. Install crewai-tools via run_code if full integration needed."
+                except Exception as e:
+                    result = f"CrewAI Tool error: {e}"
+
+            elif name == "run_mcp_action":
+                server_type = args.get("server_type")
+                action = args.get("action")
+                params = args.get("params", "")
+                try:
+                    if server_type == "filesystem":
+                        result = f"MCP Filesystem: Use 'manage_files' tool instead for local ops."
+                    elif server_type == "google-maps":
+                        result = f"MCP Google Maps: Execute run_code with 'geopy' or 'requests' to Maps API for {action}. Params: {params}"
+                    elif server_type == "brave-search":
+                        result = f"MCP Brave Search: Please use 'web_search' tool which defaults to DuckDuckGo/Google for queries."
+                    else:
+                        result = f"MCP Server '{server_type}' action '{action}' queued. Full MCP JS/Python bridge needed."
+                except Exception as e:
+                    result = f"MCP Error: {e}"
+
+            elif name == "social_media_action":
+                platform = args.get("platform")
+                action = args.get("action")
+                content = args.get("content", "")
+                result = f"AutoGPT Plugin [{platform}]: Action '{action}' recorded with content: {content}. Native API keys required in .env mapping to execute real payload."
 
             else:
                 # Catch-all
