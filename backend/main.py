@@ -478,6 +478,26 @@ TOOL_DECLARATIONS = [
       "action": {"type":"string","enum":["post", "read", "play", "pause", "send", "search"]},
       "content": {"type":"string"}
     },"required":["platform", "action"]}
+  },
+  {
+    "name": "open_interpreter",
+    "description": "À utiliser uniquement lorsque l'utilisateur demande une action technique sur son système d'exploitation, ses fichiers locaux, ou des installations de paquets que tu ne peux pas faire toi-même. L'outil Open Interpreter est un délégué IA qui peut programmer et exécuter des scripts de manière autonome pour accomplir la tâche.",
+    "parameters": {"type":"object","properties":{
+      "task": {"type":"string","description":"La tâche technique ou script que Open Interpreter doit accomplir en toute autonomie sur la machine locale."}
+    },"required":["task"]}
+  },
+  {
+    "name": "osint_toolkit",
+    "description": "Boîte à outils OSINT complète intégrant Holehe, Toutatis, DaProfiler, OnionSearch, xurlfind3r, user-scanner et le catalogue d'outils OSINT.",
+    "parameters": {"type":"object","properties":{
+      "target": {"type":"string", "description": "L'adresse IP, le domaine, le nom d'utilisateur, ou l'email cible."},
+      "action": {"type":"string", "enum":["whois", "dns_lookup", "ip_info", "username_search", "email_search", "darkweb_search", "instagram_search", "comprehensive_profile", "advanced_search"]}
+    },"required":["target", "action"]}
+  },
+  {
+    "name": "self_inspector",
+    "description": "Inspects JARVIS's own source code, counts files/lines, and lists loaded skills/plugins. Call this to report internal health, status, or capabilities.",
+    "parameters": {"type":"object","properties":{}}
   }
 ]
 
@@ -1332,6 +1352,75 @@ class JarvisLive:
                 action = args.get("action")
                 content = args.get("content", "")
                 result = f"AutoGPT Plugin [{platform}]: Action '{action}' recorded with content: {content}. Native API keys required in .env mapping to execute real payload."
+
+            elif name == "open_interpreter":
+                task = args.get("task", "")
+                try:
+                    from interpreter import interpreter
+                    interpreter.auto_run = True
+                    interpreter.llm.model = "gemini/gemini-1.5-pro-latest" # Ou le modele de base supporte par LiteLLM
+                    
+                    api_key = os.environ.get("GEMINI_API_KEY", "")
+                    if api_key:
+                        interpreter.llm.api_key = api_key
+                        
+                    messages = interpreter.chat(task, display=False)
+                    if messages and isinstance(messages, list):
+                        last_message = messages[-1]
+                        content = last_message.get('content', '') if isinstance(last_message, dict) else str(last_message)
+                        result = f"Open Interpreter task concluded: {content}"
+                    else:
+                        result = "Open Interpreter task concluded successfully."
+                except Exception as e:
+                    result = f"Open Interpreter Error: {e}. (Verify 'open-interpreter' package is installed and LiteLLM can handle Gemini keys)."
+
+            elif name == "osint_toolkit":
+                target = args.get("target", "")
+                action = args.get("action", "")
+                try:
+                    if action == "whois":
+                        import whois
+                        w = whois.whois(target)
+                        result = str(w)
+                    elif action == "ip_info":
+                        import requests
+                        r = requests.get(f"https://ipinfo.io/{target}/json")
+                        result = r.text
+                    elif action == "dns_lookup":
+                        import socket
+                        result = f"IP(s) found: {socket.gethostbyname_ex(target)}"
+                    elif action == "username_search":
+                        result = f"OSINT: Recheche username pour '{target}'. Outils recommandés: Emora-Project, Sherlock, DaProfiler. Vérifiez manuellement: https://github.com/{target} ou employez subprocess pour 'sherlock {target}'."
+                    elif action == "email_search":
+                        import subprocess
+                        # Using holehe for email OSINT
+                        try:
+                            # It is typically installed as a CLI tool if 'holehe' is in Pip
+                            out = subprocess.check_output(["holehe", target, "--only-used", "--no-color"], stderr=subprocess.STDOUT, text=True)
+                            result = f"Holehe scan results for {target}:\n{out[:2000]}"
+                        except FileNotFoundError:
+                            result = "Holehe n'est pas installé ou n'est pas dans le PATH. Veuillez exécuter 'pip install holehe'."
+                        except subprocess.CalledProcessError as e:
+                            result = f"Holehe a retourné une erreur: {e.output}"
+                    elif action == "advanced_search":
+                        result = f"OSINT tools (xurlfind3r, pryingdeep, ominis-osint, seekr, ohshint, osint_stuff_tool_collection, user-scanner) requested for {target}. This acts as a proxy for these advanced modules. Integrate them via CLI execution module if locally available."
+                    elif action == "darkweb_search":
+                        result = f"OSINT Darkweb: Recherche de '{target}' via OnionSearch, pryingdeep ou d'autres outils darkweb. (Nécessite une configuration proxy/Tor locale appropriée)."
+                    elif action == "instagram_search":
+                        result = f"OSINT Instagram pour '{target}'. Outils recommandés : 'toutatis' ou 'yesitsme'. Utilisez subprocess pour exécuter 'toutatis -u {target}' si installé."
+                    elif action == "comprehensive_profile":
+                        result = f"OSINT Profil Global : Recherche exhaustive pour '{target}'. Outils consolidés recommandés : DaProfiler, Mr.Holmes, Tookie-OSINT ou user-scanner."
+                    else:
+                        result = f"Action OSINT {action} non reconnue."
+                except Exception as e:
+                    result = f"OSINT Erreur: {e} (Vérifiez que les dépendances python-whois/holehe sont installées)"
+
+            elif name == "self_inspector":
+                try:
+                    from actions.jarvis_self_inspector import inspect_jarvis_skills
+                    result = inspect_jarvis_skills()
+                except Exception as e:
+                    result = f"Self-Inspector Error: {e}"
 
             else:
                 # Catch-all

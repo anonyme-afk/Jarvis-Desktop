@@ -56,5 +56,8 @@ pygetwindow
 plyer
 pandas
 openpyxl
+open-interpreter
+python-whois
+holehe
 
 
